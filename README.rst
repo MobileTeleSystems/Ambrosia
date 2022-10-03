@@ -8,7 +8,7 @@ Ambrosia
 .. |PyPI| image:: https://img.shields.io/pypi/v/ambrosia
     :target: https://pypi.org/project/ambrosia
 .. |PyPI License| image:: https://img.shields.io/pypi/l/ambrosia.svg
-    :target: https://github.com/MobileTeleSystems/Ambrosia/blob/master/LICENSE
+    :target: https://github.com/MobileTeleSystems/Ambrosia/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
 .. |Tests| image:: https://img.shields.io/github/workflow/status/MobileTeleSystems/RecTools/Test/main?label=tests

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Ambrosia"
+name = "Ambrozia"
 version = "0.1.0"
 description = "A Python library for working with A/B tests."
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ homepage = "https://github.com/MobileTeleSystems/Ambrosia"
 repository = "https://github.com/MobileTeleSystems/Ambrosia"
 documentation = "https://ambrosia.readthedocs.io"
 keywords = [
-    "Ambrosia",
+    "ambrosia",
     "ab testing",
     "split testing",
     "experiment design",

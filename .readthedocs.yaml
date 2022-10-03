@@ -5,8 +5,6 @@ build:
   tools:
     python: "3.8"
   jobs:
-    pre_build:
-      - cp -r docs/source/
     post_install:
       - pip install --no-cache-dir poetry
       - poetry export -f requirements.txt -o requirements.txt --without-hashes
