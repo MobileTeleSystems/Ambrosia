@@ -1,0 +1,101 @@
+[tool.poetry]
+name = "Ambrosia"
+version = "0.1.0"
+description = "A Python library for working with A/B tests."
+license = "Apache-2.0"
+authors = [
+    "Aslan Bayramkulov <aslan.bayramkulov96@gmail.com>",
+    "Artem Khakimov <artem.khakimov@gmail.com>",
+    "Artem Vasin <p1not1equals1np@gmail.com>",
+]
+readme = "README.rst"
+homepage = "https://github.com/MobileTeleSystems/Ambrosia"
+repository = "https://github.com/MobileTeleSystems/Ambrosia"
+documentation = "https://ambrosia.readthedocs.io"
+keywords = [
+    "Ambrosia",
+    "ab testing",
+    "split testing",
+    "experiment design",
+    "groups split",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+]
+packages = [
+    { include = "ambrosia", from = "." },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7.2, <3.10.4"
+jinja2 = "^3.0.0"
+joblib = "^1.1.0"
+nmslib = "^2.0.4"
+numpy = ">=1.19.5, <2.0.0"
+pandas = ">=0.25.3, <2.0.0"
+pyspark = "^3.2"
+PyYAML = "6.0"
+scikit-learn = "^1.0.2"
+scipy = "^1.6.3"
+tqdm = "^4.27.0"
+hyperopt = "^0.2.7"
+catboost = "^1.0.4"
+
+[tool.poetry.dev-dependencies]
+autopep8 = "1.6.0"
+black = "22.6.0"
+isort = "5.10.1"
+pylint = "2.14.5"
+flake8 = "4.0.1"
+flake8-docstrings = "1.6.0"
+pytest = "7.1.2"
+pytest-cov = "3.0.0"
+pytest-lazy-fixture = "0.6.3"
+
+[tool.black]
+line-length = 120
+target-version = ['py37', 'py38', 'py39', 'py310']
+include = '\.pyi?$'
+exclude = '''
+ 
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | docs
+  )/
+)
+'''
+
+[tool.pytest.ini_options]
+console_output_style = "progress"
+testpaths = ["tests"]
+junit_family = "xunit2"
+python_functions = "test_"
+markers = [
+    "unit: mark a test as a unit test",
+    "smoke: mark a test as smoke test"
+]
+
+[build-system]
+requires = ["poetry>=1.0.5"]
+build-backend = "poetry.masonry.api"

@@ -1,0 +1,54 @@
+.idea/
+.vscode/
+
+# Sphynx docs
+docs/_build/
+docs/build
+docs/*.tar.gz
+
+# Data
+data/
+
+# Virtualenv
+mars_env/
+.venv/
+
+# Jupyter checkpoints
+.ipynb_checkpoints
+
+# Python dev artefacts
+__pycache__/
+*.py[cod]
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.python-version
+.DS_Store
+
+# VS code artifacts
+settings.json
+
+.mypy_cache/
+.pytest_cache/
+
+# Tests artifacts
+reports/
+coverage.xml
+.coverage
+.coverage.*
+
+# Catboost info
+catboost_info/
