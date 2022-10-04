@@ -12,7 +12,7 @@ Ambrosia
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
 .. |Tests| image:: https://img.shields.io/github/workflow/status/MobileTeleSystems/RecTools/Test/main?label=tests
-    :target: https://github.com/MobileTeleSystems/Ambrosia/actions/workflows/test.yaml?query=branch%3Amaster+
+    :target: https://github.com/MobileTeleSystems/Ambrosia/actions/workflows/test.yaml?query=branch%3Amain+
 .. |Coverage| image:: https://codecov.io/gh/MobileTeleSystems/Ambrosia/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/MobileTeleSystems/Ambrosia
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
@@ -58,7 +58,7 @@ Documentation
 -------------
 
 For more details, see the `Documentation <https://ambrosia.readthedocs.io/>`_ 
-and `Tutorials <https://github.com/MobileTeleSystems/Ambrosia/tree/master/examples>`_.
+and `Tutorials <https://github.com/MobileTeleSystems/Ambrosia/tree/main/examples>`_.
 
 .. install
 
