@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Ambrozia"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python library for working with A/B tests."
 license = "Apache-2.0"
 authors = [
