@@ -16,6 +16,7 @@
 
     installation
     tutorials
+    develop
 
 .. toctree::
     :maxdepth: 1
