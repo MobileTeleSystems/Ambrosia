@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 0.1.1 (04.10.2022)
+---------------------------
+
+Hotfix for library naming. 
+Library temprorary renamed to ``ambrozia`` in PyPI repository due to hidden naming conflict. 
+
 Version 0.1.0 (03.10.2022)
 ---------------------------
 

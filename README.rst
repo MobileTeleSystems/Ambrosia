@@ -5,9 +5,9 @@ Ambrosia
 
 |PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/ambrosia
-    :target: https://pypi.org/project/ambrosia
-.. |PyPI License| image:: https://img.shields.io/pypi/l/ambrosia.svg
+.. |PyPI| image:: https://img.shields.io/pypi/v/ambrozia
+    :target: https://pypi.org/project/ambrozia
+.. |PyPI License| image:: https://img.shields.io/pypi/l/ambrozia.svg
     :target: https://github.com/MobileTeleSystems/Ambrosia/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
@@ -17,8 +17,8 @@ Ambrosia
     :target: https://codecov.io/gh/MobileTeleSystems/Ambrosia
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/psf/black
-.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrosia.svg
-    :target: https://pypi.org/project/ambrosia  
+.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrozia.svg
+    :target: https://pypi.org/project/ambrozia  
 
 
 **Ambrosia** is a Python library for A/B tests design, split and effect 
@@ -49,7 +49,7 @@ Key functionality
 * Pilots design ✈
 * Multi-group split 🎳
 * Matching of new control group to the existing pilot 🎏
-* Getting the experiments result evaluation as p-value, point estimate of effect and confidence interval 🔬
+* Getting the experiments result evaluation as p-value, point estimate of effect and confidence interval 🎞
 * Experiments acceleration 🎢
 
 .. documentation
@@ -65,11 +65,11 @@ and `Tutorials <https://github.com/MobileTeleSystems/Ambrosia/tree/master/exampl
 Installation
 ------------
 
-Stable version is released on every tag to ``master`` branch. 
+Stable version is released on every tag to ``main`` branch. 
 
 .. code:: bash
     
-    pip install ambrosia 
+    pip install ambrozia 
 
 **Ambrosia requires Python 3.7+**
 
@@ -83,7 +83,7 @@ Designer
 
 .. code:: python
 
-    from ambrosia.designer import Designer
+    from ambrozia.designer import Designer
     designer = Designer(dataframe=df, effects=1.2, metrics='portfel_clc') # 20% effect, and loaded data frame df
     designer.run('size') 
 
@@ -93,7 +93,7 @@ Splitter
 
 .. code:: python
 
-    from ambrosia.splitter import Splitter
+    from ambrozia.splitter import Splitter
     splitter = Splitter(dataframe=df, id_column='id') # loaded data frame df with column with id - 'id'
     splitter.run(groups_size=500, method='simple') 
 
@@ -103,7 +103,7 @@ Tester
 
 .. code:: python
 
-    from ambrosia.tester import Tester
+    from ambrozia.tester import Tester
     tester = Tester(dataframe=df, column_groups='group') # loaded data frame df with groups info 'group'
     tester.run(metrics='retention', method='theory', criterion='ttest')
 

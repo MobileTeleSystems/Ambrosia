@@ -15,7 +15,7 @@ BLACK=black
 PYTEST=pytest
 COVERAGE=coverage
 
-SOURCES=ambrosia
+SOURCES=ambrozia
 TESTS=tests
 REPORTS=reports
 

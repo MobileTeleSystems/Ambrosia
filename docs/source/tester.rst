@@ -2,7 +2,7 @@ Tester
 ==========
 
 
-.. currentmodule:: ambrosia.tester
+.. currentmodule:: ambrozia.tester
 
 .. autosummary::
     :nosignatures:
@@ -10,7 +10,7 @@ Tester
     Tester
     test
 
-.. autoclass:: ambrosia.tester.Tester
+.. autoclass:: ambrozia.tester.Tester
    :members: run
 
-.. autofunction:: ambrosia.tester.test
+.. autofunction:: ambrozia.tester.test
