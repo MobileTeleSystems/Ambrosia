@@ -2,7 +2,7 @@ Splitter
 ==========
 
 
-.. currentmodule:: ambrosia.splitter
+.. currentmodule:: ambrozia.splitter
 
 .. autosummary::
     :nosignatures:
@@ -11,9 +11,9 @@ Splitter
     load_from_config
     split
     
-.. autoclass:: ambrosia.splitter.Splitter
+.. autoclass:: ambrozia.splitter.Splitter
    :members: run
 
-.. autofunction:: ambrosia.splitter.load_from_config
+.. autofunction:: ambrozia.splitter.load_from_config
     
-.. autofunction:: ambrosia.splitter.split
+.. autofunction:: ambrozia.splitter.split

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ambrosia.preprocessing import Cuped, MultiCuped
+from ambrozia.preprocessing import Cuped, MultiCuped
 
 
 @pytest.mark.smoke

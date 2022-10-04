@@ -2,7 +2,7 @@ Preprocessing
 =============
 
 
-.. currentmodule:: ambrosia.preprocessing
+.. currentmodule:: ambrozia.preprocessing
 
 .. autosummary::
     :nosignatures:
@@ -13,17 +13,17 @@ Preprocessing
     Cuped
     MultiCuped
 
-.. autoclass:: ambrosia.preprocessing.Preprocessor
+.. autoclass:: ambrozia.preprocessing.Preprocessor
    :members: aggregate, robust, cuped, data, transformations
 
-.. autoclass:: ambrosia.preprocessing.AggregatePreprocessor
+.. autoclass:: ambrozia.preprocessing.AggregatePreprocessor
    :members: run, transform, get_params_dict
 
-.. autoclass:: ambrosia.preprocessing.RobustPreprocessor
+.. autoclass:: ambrozia.preprocessing.RobustPreprocessor
    :members: run
 
-.. autoclass:: ambrosia.preprocessing.Cuped
+.. autoclass:: ambrozia.preprocessing.Cuped
    :members: fit, transform, fit_transform
 
-.. autoclass:: ambrosia.preprocessing.MultiCuped
+.. autoclass:: ambrozia.preprocessing.MultiCuped
    :members: fit, transform, fit_transform

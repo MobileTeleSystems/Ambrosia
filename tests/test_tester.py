@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ambrosia.tester import Tester, test
-from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
+from ambrozia.tester import Tester, test
+from ambrozia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
 
 
 @pytest.mark.smoke
