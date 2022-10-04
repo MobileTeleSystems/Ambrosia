@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from ambrosia.designer import Designer, design, design_binary
+from ambrozia.designer import Designer, design, design_binary
 
 
 @pytest.mark.smoke

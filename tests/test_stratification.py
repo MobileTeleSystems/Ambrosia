@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from ambrosia.tools.ab_abstract_component import EmptyStratValue
-from ambrosia.tools.stratification import Stratification
+from ambrozia.tools.ab_abstract_component import EmptyStratValue
+from ambrozia.tools.stratification import Stratification
 
 
 @pytest.mark.smoke()

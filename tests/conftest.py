@@ -6,10 +6,10 @@ import pyspark
 import pytest
 import scipy.stats as sps
 
-from ambrosia.designer import Designer
-from ambrosia.splitter import Splitter
-from ambrosia.tester import Tester
-from ambrosia.tools.stratification import Stratification
+from ambrozia.designer import Designer
+from ambrozia.splitter import Splitter
+from ambrozia.tester import Tester
+from ambrozia.tools.stratification import Stratification
 
 
 @pytest.fixture()

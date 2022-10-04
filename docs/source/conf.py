@@ -37,7 +37,7 @@ limitations under the License.
 author = "MTS Big Data A/B Team"
 
 # The full version, including alpha/beta/rc tags
-from ambrosia import __version__  # noqa
+from ambrozia import __version__  # noqa
 
 release = __version__
 version = __version__
