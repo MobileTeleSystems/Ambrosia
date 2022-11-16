@@ -36,7 +36,7 @@ def get_calc_effect_ttest(group_a: np.ndarray, group_b: np.ndarray, effect_type:
     Calculation effect for ttest
     """
     if effect_type == "absolute":
-        return np.mean(group_b - group_a, axis=0)
+        return np.mean(group_b, axis=0) - np.mean(group_a, axis=0)
     elif effect_type == "relative":
         return np.mean(group_b, axis=0) / np.mean(group_a, axis=0) - 1
     else:

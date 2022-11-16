@@ -1,4 +1,8 @@
 .. include:: ../../README.rst
+    :end-before: shields end
+
+.. include:: ../../README.rst
+    :start-after: title
     :end-before: documentation
 
 .. toctree::
