@@ -1,4 +1,4 @@
-.. title
+.. shields start
 
 Ambrosia
 ========
@@ -20,8 +20,11 @@ Ambrosia
 .. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrozia.svg
     :target: https://pypi.org/project/ambrozia  
 
+.. shields end
+
 .. image:: https://github.com/MobileTeleSystems/Ambrosia/blob/main/docs/source/_static/ambrosia.png?sanitize=true
 
+.. title
 
 **Ambrosia** is a Python library for A/B tests design, split and effect 
 measurement. It provides rich set of methods for conducting full 
