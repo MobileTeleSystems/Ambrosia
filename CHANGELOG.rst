@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 0.1.2 (16.11.2022)
+---------------------------
+
+Hotfix for Ttest stat criterion absolute effect calculation. 
+Url to main image deleted from docs.
+
 Version 0.1.1 (04.10.2022)
 ---------------------------
 
