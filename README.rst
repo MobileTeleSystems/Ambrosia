@@ -23,6 +23,9 @@ Ambrosia
 .. shields end
 
 .. image:: https://raw.githubusercontent.com/MobileTeleSystems/Ambrosia/main/docs/source/_static/ambrosia.png
+   :height: 320 px
+   :width: 320 px
+   :align: center
 
 .. title
 
