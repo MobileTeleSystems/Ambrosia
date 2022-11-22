@@ -2,7 +2,7 @@ Designer
 ==========
 
 
-.. currentmodule:: ambrozia.designer
+.. currentmodule:: ambrosia.designer
 
 .. autosummary::
     :nosignatures:
@@ -12,11 +12,11 @@ Designer
     design
     design_binary
 
-.. autoclass:: ambrozia.designer.Designer
+.. autoclass:: ambrosia.designer.Designer
    :members: run
 
-.. autofunction:: ambrozia.designer.load_from_config
+.. autofunction:: ambrosia.designer.load_from_config
 
-.. autofunction:: ambrozia.designer.design
+.. autofunction:: ambrosia.designer.design
 
-.. autofunction:: ambrozia.designer.design_binary
+.. autofunction:: ambrosia.designer.design_binary

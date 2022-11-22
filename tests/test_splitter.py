@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ambrozia.splitter import Splitter, split
+from ambrosia.splitter import Splitter, split
 
 
 @pytest.mark.smoke()

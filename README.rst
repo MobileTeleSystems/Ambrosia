@@ -5,9 +5,9 @@ Ambrosia
 
 |PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/ambrozia
-    :target: https://pypi.org/project/ambrozia
-.. |PyPI License| image:: https://img.shields.io/pypi/l/ambrozia.svg
+.. |PyPI| image:: https://img.shields.io/pypi/v/ambrosia
+    :target: https://pypi.org/project/ambrosia
+.. |PyPI License| image:: https://img.shields.io/pypi/l/ambrosia.svg
     :target: https://github.com/MobileTeleSystems/Ambrosia/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
@@ -17,12 +17,12 @@ Ambrosia
     :target: https://codecov.io/gh/MobileTeleSystems/Ambrosia
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/psf/black
-.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrozia.svg
-    :target: https://pypi.org/project/ambrozia  
+.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrosia.svg
+    :target: https://pypi.org/project/ambrosia  
 
 .. shields end
 
-.. image:: https://github.com/MobileTeleSystems/Ambrosia/blob/main/docs/source/_static/ambrosia.png?sanitize=true
+.. image:: https://raw.githubusercontent.com/MobileTeleSystems/Ambrosia/main/docs/source/_static/ambrosia.png
 
 .. title
 
@@ -74,7 +74,7 @@ Stable version is released on every tag to ``main`` branch.
 
 .. code:: bash
     
-    pip install ambrozia 
+    pip install ambrosia 
 
 **Ambrosia requires Python 3.7+**
 
@@ -88,7 +88,7 @@ Designer
 
 .. code:: python
 
-    from ambrozia.designer import Designer
+    from ambrosia.designer import Designer
     designer = Designer(dataframe=df, effects=1.2, metrics='portfel_clc') # 20% effect, and loaded data frame df
     designer.run('size') 
 
@@ -98,7 +98,7 @@ Splitter
 
 .. code:: python
 
-    from ambrozia.splitter import Splitter
+    from ambrosia.splitter import Splitter
     splitter = Splitter(dataframe=df, id_column='id') # loaded data frame df with column with id - 'id'
     splitter.run(groups_size=500, method='simple') 
 
@@ -108,7 +108,7 @@ Tester
 
 .. code:: python
 
-    from ambrozia.tester import Tester
+    from ambrosia.tester import Tester
     tester = Tester(dataframe=df, column_groups='group') # loaded data frame df with groups info 'group'
     tester.run(metrics='retention', method='theory', criterion='ttest')
 

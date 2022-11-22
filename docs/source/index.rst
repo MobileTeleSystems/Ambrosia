@@ -7,8 +7,8 @@
 
 .. toctree::
     :maxdepth: 2
-    :caption: ambrozia
-    :name: ambrozia
+    :caption: ambrosia
+    :name: ambrosia
     :hidden:
 
     self
