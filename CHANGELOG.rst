@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 0.2.0 (22.11.2022)
+---------------------------
+
+Library name changed back to ``ambrosia``. Naming conflict in PyPI has been resolved.  
+0.1.x versions are still available in PyPI under ``ambrozia`` name.
+
 Version 0.1.2 (16.11.2022)
 ---------------------------
 

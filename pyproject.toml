@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "Ambrozia"
-version = "0.1.2"
+name = "Ambrosia"
+version = "0.2.0"
 description = "A Python library for working with A/B tests."
 license = "Apache-2.0"
 authors = [
@@ -35,7 +35,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 packages = [
-    { include = "ambrozia", from = "." },
+    { include = "ambrosia", from = "." },
 ]
 
 [tool.poetry.dependencies]

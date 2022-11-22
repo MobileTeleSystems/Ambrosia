@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ambrozia.preprocessing import MLVarianceReducer
+from ambrosia.preprocessing import MLVarianceReducer
 
 
 @pytest.mark.smoke

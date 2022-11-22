@@ -1,6 +1,6 @@
 import pytest
 
-from ambrozia.preprocessing import AggregatePreprocessor
+from ambrosia.preprocessing import AggregatePreprocessor
 
 
 @pytest.mark.smoke()
