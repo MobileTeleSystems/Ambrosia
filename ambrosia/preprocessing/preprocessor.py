@@ -29,7 +29,7 @@ import pandas as pd
 from ambrosia import types
 from ambrosia.preprocessing.aggregate import AggregatePreprocessor
 from ambrosia.preprocessing.cuped import Cuped, MultiCuped
-from ambrosia.preprocessing.robust import RobustPreprocessor
+from ambrosia.preprocessing.robust import RobustPreprocessor, IQRPreprocessor, BoxCoxTransformer, LogTransformer
 
 
 class Preprocessor:
@@ -96,6 +96,124 @@ class Preprocessor:
         """
         return self.dataframe if copy else self.dataframe.copy()
 
+    def aggregate(
+        self,
+        groupby_columns: types.ColumnNamesType,
+        categorial_method: types.MethodType = "mode",
+        real_method: types.MethodType = "sum",
+        agg_params: Optional[Dict] = None,
+        real_cols: Optional[types.ColumnNamesType] = None,
+        categorial_cols: Optional[types.ColumnNamesType] = None,
+    ) -> Preprocessor:
+        """
+        Make an aggregation of the data frame.
+
+        Parameters
+        ----------
+        groupby_columns : List of columns
+            Columns for GROUP BY.
+        categorial_method : String or callable
+            Aggregation method  that will be applied for all selected
+            categorial variables.
+        real_method : types.MethodType, default: ``"sum"``
+            Aggregation method  that will be applied for all selected
+            real variables.
+        agg_params : Dict, optional
+            Dictionary with aggregation parameters.
+        real_cols : types.ColumnNamesType, optional
+            Columns with real metrics.
+            Overriden by ``agg_params`` parameter and could be passed if
+            expected default aggregation behavior.
+        categorial_cols : types.ColumnNamesType, optional
+            Columns with categorial metrics
+            Overriden by ``agg_params`` parameter and could be passed if
+            expected default aggregation behavior.
+        """
+        transformer = AggregatePreprocessor(categorial_method, real_method)
+        self.dataframe = transformer.run(self.dataframe, groupby_columns, agg_params, real_cols, categorial_cols)
+        self.transformers.append(transformer)
+        return self
+
+    def robust(
+        self,
+        column_names: types.ColumnNamesType,
+        alpha: float = 0.05,
+        tail: str = "both",
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make a robust transformation to remove outliers.
+
+        Removes objects from the dataframe which are in the head and tail alpha
+        parts of chosen metrics distributions.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        alpha : float, default: ``0.05``
+            The percentage of removed data from head and tail.
+        """
+        transformer = RobustPreprocessor(tail=tail, verbose=self.verbose)
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, alpha, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def iqr(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make IQR preprocessing of given columns to remove outliers.
+        """
+        transformer = IQRPreprocessor()
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def boxcox(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make Box-Cox transformation of given columns.
+        """
+        transformer = BoxCoxTransformer()
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def log(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make logarithmic transformation of given columns.
+        """
+        transformer = LogTransformer()
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
     def cuped(
         self,
         target: types.ColumnNameType,
@@ -157,63 +275,6 @@ class Preprocessor:
         else:
             transformer.load_params(load_path)
             transformer.transform(by, inplace=True, name=name)
-        self.transformers.append(transformer)
-        return self
-
-    def aggregate(
-        self,
-        groupby_columns: types.ColumnNamesType,
-        categorial_method: types.MethodType = "mode",
-        real_method: types.MethodType = "sum",
-        agg_params: Optional[Dict] = None,
-        real_cols: Optional[types.ColumnNamesType] = None,
-        categorial_cols: Optional[types.ColumnNamesType] = None,
-    ) -> Preprocessor:
-        """
-        Make an aggregation of the data frame.
-
-        Parameters
-        ----------
-        groupby_columns : List of columns
-            Columns for GROUP BY.
-        categorial_method : String or callable
-            Aggregation method  that will be applied for all selected
-            categorial variables.
-        real_method : types.MethodType, default: ``"sum"``
-            Aggregation method  that will be applied for all selected
-            real variables.
-        agg_params : Dict, optional
-            Dictionary with aggregation parameters.
-        real_cols : types.ColumnNamesType, optional
-            Columns with real metrics.
-            Overriden by ``agg_params`` parameter and could be passed if
-            expected default aggregation behavior.
-        categorial_cols : types.ColumnNamesType, optional
-            Columns with categorial metrics
-            Overriden by ``agg_params`` parameter and could be passed if
-            expected default aggregation behavior.
-        """
-        transformer = AggregatePreprocessor(categorial_method, real_method)
-        self.dataframe = transformer.run(self.dataframe, groupby_columns, agg_params, real_cols, categorial_cols)
-        self.transformers.append(transformer)
-        return self
-
-    def robust(self, column_names: types.ColumnNamesType, alpha: float = 0.05) -> Preprocessor:
-        """
-        Make a robust transformation.
-
-        Remove objects from the dataframe which are in the head and tail alpha
-        parts of chosen metrics distributions.
-
-        Parameters
-        ----------
-        column_names : ColumnNamesType
-            One or number of columns in the dataframe.
-        alpha : float, default: ``0.05``
-            The percentage of removed data from head and tail.
-        """
-        transformer = RobustPreprocessor(self.dataframe, verbose=self.verbose)
-        transformer.run(column_names, alpha, inplace=True)
         self.transformers.append(transformer)
         return self
 

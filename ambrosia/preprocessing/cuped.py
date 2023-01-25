@@ -138,6 +138,8 @@ class Cuped(AbstractVarianceReduction):
 
     def load_params_dict(self, params: Dict) -> None:
         """
+        Load model parameters from the dictionary.
+
         Parameters
         ----------
         params : Dict
@@ -152,27 +154,6 @@ class Cuped(AbstractVarianceReduction):
         else:
             raise TypeError(f"params argument must contain: {Cuped.BIAS_NAME}")
         self.fitted = True
-
-    def store_params(self, store_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        store_path : Path
-            Path where parameters will be stored in a json format.
-        """
-        with open(store_path, "w+") as file:
-            json.dump(self.get_params_dict(), file)
-
-    def load_params(self, load_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        load_path : Path
-            Path to a json file with parameters.
-        """
-        with open(load_path, "r+") as file:
-            params = json.load(file)
-            self.load_params_dict(params)
 
     def fit(self, covariate_column: types.ColumnNameType) -> None:
         """
@@ -378,8 +359,8 @@ class MultiCuped(AbstractVarianceReduction):
         """
         self._check_fitted()
         return {
-            Cuped.THETA_NAME: self.theta,
-            Cuped.BIAS_NAME: self.bias,
+            MultiCuped.THETA_NAME: self.theta,
+            MultiCuped.BIAS_NAME: self.bias,
         }
 
     def load_params_dict(self, params: Dict) -> None:
@@ -389,14 +370,14 @@ class MultiCuped(AbstractVarianceReduction):
         params : Dict
             Dictionary with params.
         """
-        if Cuped.THETA_NAME in params:
-            self.theta = params[Cuped.THETA_NAME]
+        if MultiCuped.THETA_NAME in params:
+            self.theta = params[MultiCuped.THETA_NAME]
         else:
-            raise TypeError(f"params argument must contain: {Cuped.THETA_NAME}")
-        if Cuped.BIAS_NAME in params:
-            self.bias = params[Cuped.BIAS_NAME]
+            raise TypeError(f"params argument must contain: {MultiCuped.THETA_NAME}")
+        if MultiCuped.BIAS_NAME in params:
+            self.bias = params[MultiCuped.BIAS_NAME]
         else:
-            raise TypeError(f"params argument must contain: {Cuped.BIAS_NAME}")
+            raise TypeError(f"params argument must contain: {MultiCuped.BIAS_NAME}")
         self.fitted = True
 
     def load_params(self, load_path: Path) -> None:
