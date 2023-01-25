@@ -198,7 +198,7 @@ class Cuped(AbstractVarianceReduction):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns([covariate_column])
+        self._check_columns(self.df, [covariate_column])
         old_variance: float = self.cov.loc[self.target_column, self.target_column]
         new_target: np.ndarray = self(self.df[self.target_column], self.df[covariate_column])
         new_variance: float = np.var(new_target)
@@ -407,7 +407,7 @@ class MultiCuped(AbstractVarianceReduction):
             Columns which will be used as the covariates in Multi CUPED
             transformation.
         """
-        self._check_columns(covariate_columns)
+        self._check_columns(self.df, covariate_columns)
         matrix: np.ndarray = self.cov.loc[covariate_columns, covariate_columns]
         amount_features: int = len(covariate_columns)
         covariance_target: np.ndarray = self.cov.loc[covariate_columns, self.target_column].values.reshape(
@@ -442,7 +442,7 @@ class MultiCuped(AbstractVarianceReduction):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns(covariate_columns)
+        self._check_columns(self.df, covariate_columns)
         old_variance: float = self.cov.loc[self.target_column, self.target_column]
         self._check_fitted()
         new_target: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
