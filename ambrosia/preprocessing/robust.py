@@ -458,7 +458,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
 
     def load_params_dict(self, params: Dict) -> None:
         """
-        Load model parameters from the dictionary.
+        Load instance parameters from the dictionary.
 
         Parameters
         ----------
@@ -560,7 +560,7 @@ class LogTransformer(AbstractFittableTransformer):
 
     def load_params_dict(self, params: Dict) -> None:
         """
-        Load model parameters from the dictionary.
+        Load instance parameters from the dictionary.
 
         Parameters
         ----------
