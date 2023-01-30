@@ -93,6 +93,11 @@ class Preprocessor:
         ----------
         copy : bool, default: ``True``
             If true returns copy, otherwise link
+
+        Returns
+        -------
+        dataframe : pd.DataFrame
+            Table with the modified data after the sequential preprocessing.
         """
         return self.dataframe.copy() if copy else self.dataframe
 
@@ -142,10 +147,10 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make a robust transformation to remove outliers.
+        Make a robust preprocessing of the selected columns to remove outliers.
 
-        Removes objects from the dataframe which are in the head and tail alpha
-        parts of chosen metrics distributions.
+        Removes objects from the dataframe which are in the head, end or
+        both tail parts of the selected metrics distributions.
 
         Parameters
         ----------
@@ -153,6 +158,11 @@ class Preprocessor:
             One or number of columns in the dataframe.
         alpha : float, default: ``0.05``
             The percentage of removed data from head and tail.
+        tail : str, default: ``"both"``
+            Part of distribution to be removed.
+            Can be ``"left"``, ``"right"`` or ``"both"``.
+        load_path : Path, optional
+            Path to a json file with parameters.
         """
         transformer = RobustPreprocessor(verbose=self.verbose)
         if load_path is None:
@@ -169,7 +179,17 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make IQR preprocessing of given columns to remove outliers.
+        Make an IQR preprocessing of the selected columns to remove outliers.
+
+        Removes objects from the dataframe which are behind boxplot maximum
+        and minimum of the selected metrics distributions.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to a json file with parameters.
         """
         transformer = IQRPreprocessor(verbose=self.verbose)
         if load_path is None:
@@ -186,7 +206,16 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make Box-Cox transformation of given columns.
+        Make a Box-Cox transformation on the selected columns.
+
+        Optimal transformation parameters are selected automatically.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to a json file with parameters.
         """
         transformer = BoxCoxTransformer()
         if load_path is None:
@@ -203,7 +232,14 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make logarithmic transformation of given columns.
+        Make a logarithmic transformation on the selected columns.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to a json file with parameters.
         """
         transformer = LogTransformer()
         if load_path is None:
@@ -222,7 +258,7 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make CUPED transformation for the chosen column.
+        Make CUPED transformation on the selected column.
 
         Parameters
         ----------
@@ -254,7 +290,7 @@ class Preprocessor:
         load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
-        Make Multi CUPED transformation for the chosen column.
+        Make Multi CUPED transformation on the selected column.
 
         Parameters
         ----------

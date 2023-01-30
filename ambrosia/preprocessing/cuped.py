@@ -385,7 +385,7 @@ class MultiCuped(AbstractVarianceReducer):
         Parameters
         ----------
         load_path : Path
-            Path to a json file with parameters.
+            Path to json file with parameters.
         """
         with open(load_path, "r+") as file:
             params = json.load(file)
