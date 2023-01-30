@@ -11,7 +11,7 @@ Ambrosia
     :target: https://github.com/MobileTeleSystems/Ambrosia/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
-.. |Tests| image:: https://img.shields.io/github/workflow/status/MobileTeleSystems/RecTools/Test/main?label=tests
+.. |Tests| image:: https://img.shields.io/github/actions/workflow/status/MobileTeleSystems/Ambrosia/test.yaml?branch=main
     :target: https://github.com/MobileTeleSystems/Ambrosia/actions/workflows/test.yaml?query=branch%3Amain+
 .. |Coverage| image:: https://codecov.io/gh/MobileTeleSystems/Ambrosia/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/MobileTeleSystems/Ambrosia
