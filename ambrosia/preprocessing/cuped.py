@@ -335,21 +335,6 @@ class MultiCuped(AbstractVarianceReducer):
         self.bias = None
         self.cov: pd.DataFrame = dataframe.cov()
 
-    def store_params(self, store_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        store_path : Path
-            Path where parameters will be stored in a json format.
-        """
-        self._check_fitted()
-        with open(store_path, "w+") as file:
-            params: Dict[str, float] = {}
-            for j in range(self.theta.shape[0]):
-                params["theta_" + str(j)] = self.theta[j][0]
-            params["bias"] = self.bias
-            json.dump(params, file)
-
     def get_params_dict(self) -> Dict:
         """
         Parameters
@@ -379,6 +364,21 @@ class MultiCuped(AbstractVarianceReducer):
         else:
             raise TypeError(f"params argument must contain: {MultiCuped.BIAS_NAME}")
         self.fitted = True
+
+    def store_params(self, store_path: Path) -> None:
+        """
+        Parameters
+        ----------
+        store_path : Path
+            Path where parameters will be stored in a json format.
+        """
+        self._check_fitted()
+        with open(store_path, "w+") as file:
+            params: Dict[str, float] = {}
+            for j in range(self.theta.shape[0]):
+                params["theta_" + str(j)] = self.theta[j][0]
+            params["bias"] = self.bias
+            json.dump(params, file)
 
     def load_params(self, load_path: Path) -> None:
         """

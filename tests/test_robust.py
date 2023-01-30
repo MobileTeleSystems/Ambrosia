@@ -48,7 +48,7 @@ def test_robust(tail, column_names, alpha, transf_name, data_nonlin_var, robust_
 
 
 @pytest.mark.unit
-def test_robust_save_load(data_nonlin_var, robust_moments):
+def test_robust_load_store(data_nonlin_var, robust_moments):
     """
     Test RobustPreprocessor save and load methods.
     """
@@ -98,7 +98,7 @@ def test_iqr(column_names, transf_name, data_nonlin_var, robust_moments):
 
 
 @pytest.mark.unit
-def test_iqr_save_load(data_nonlin_var, robust_moments):
+def test_iqr_load_store(data_nonlin_var, robust_moments):
     """
     Test IQRPreprocessor save and load methods.
     """
@@ -147,7 +147,7 @@ def test_boxcox(column_names, transf_name, data_nonlin_var, robust_moments):
 
 
 @pytest.mark.unit
-def test_boxcox_save_load(data_nonlin_var, robust_moments):
+def test_boxcox_load_store(data_nonlin_var, robust_moments):
     """
     Test BoxCoxTransformer save and load methods.
     """
@@ -216,7 +216,7 @@ def test_logarithm(column_names, transf_name, data_nonlin_var, robust_moments):
 
 
 @pytest.mark.unit
-def test_logarithm_save_load(data_nonlin_var, robust_moments):
+def test_logarithm_load_store(data_nonlin_var, robust_moments):
     """
     Test LogTransformer save and load methods.
     """

@@ -128,9 +128,7 @@ class AbstractFittableTransformer(ABC):
         if not self.fitted:
             raise RuntimeError("Call fit method !!!")
 
-    def _check_columns(
-        self, dataframe: pd.DataFrame, columns: types.ColumnNameType
-    ) -> None:  ### same  method in AbstractVarRed requires correction
+    def _check_columns(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
         for column in columns:
             if column not in dataframe:
                 raise ValueError(f"Column {column} is not in Data Frame columns list")
@@ -197,12 +195,6 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
         self.target_column = target_column
         self.verbose: bool = verbose
         super().__init__()
-
-    ### To be removed
-    def _check_columns(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
-        for column in columns:
-            if column not in dataframe.columns:
-                raise ValueError(f"Column {column} is not in Data Frame columns list")
 
     def _return_result(
         self, new_target: np.ndarray, inplace: bool, name: Union[types.ColumnNameType, None]
