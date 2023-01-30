@@ -26,3 +26,19 @@ def test_cuped_sequential(data_nonlin_var):
         .cuped("target_2", "feature_3", name="target_3")
         .data()
     )
+
+
+@pytest.mark.smoke()
+def test_full_sequential(data_nonlin_var):
+    """
+    Test sequential cuped + robust
+    """
+    transformer = Preprocessor(data_nonlin_var, verbose=False)
+    transformed = (
+        transformer.robust("feature_1", alpha=0.01, tail="right")
+        .iqr(["feature_2", "feature_3"])
+        .log("feature_1")
+        .boxcox(["feature_2", "feature_3"])
+        .cuped("target", "feature_3", name="target_cuped")
+        .data()
+    )
