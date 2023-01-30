@@ -24,10 +24,10 @@ import numpy as np
 import pandas as pd
 
 from ambrosia import types
-from ambrosia.tools.ab_abstract_component import AbstractVarianceReduction
+from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
 
 
-class Cuped(AbstractVarianceReduction):
+class Cuped(AbstractVarianceReducer):
     """
     Class for data CUPED transformation.
 
@@ -231,7 +231,7 @@ class Cuped(AbstractVarianceReduction):
         return self.transform(covariate_column, inplace, name)
 
 
-class MultiCuped(AbstractVarianceReduction):
+class MultiCuped(AbstractVarianceReducer):
     """
     Class for data Multi CUPED transformation.
 

@@ -94,7 +94,7 @@ class Preprocessor:
         copy : bool, default: ``True``
             If true returns copy, otherwise link
         """
-        return self.dataframe if copy else self.dataframe.copy()
+        return self.dataframe.copy() if copy else self.dataframe
 
     def aggregate(
         self,
@@ -154,9 +154,9 @@ class Preprocessor:
         alpha : float, default: ``0.05``
             The percentage of removed data from head and tail.
         """
-        transformer = RobustPreprocessor(tail=tail, verbose=self.verbose)
+        transformer = RobustPreprocessor(verbose=self.verbose)
         if load_path is None:
-            transformer.fit_transform(self.dataframe, column_names, alpha, inplace=True)
+            transformer.fit_transform(self.dataframe, column_names, alpha, tail, inplace=True)
         else:
             transformer.load_params(load_path)
             transformer.transform(self.dataframe, inplace=True)

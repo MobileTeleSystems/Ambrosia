@@ -158,14 +158,30 @@ class OldRobustPreprocessor:
         return None if inplace else transformed
 
 
-class RobustPreprocessor(AbstractFittableTransformer):
-    available_tails = ["both", "left", "right"]
-
-    def __str__(self) -> str:
-        return "Robust preprocessing"
+class RobustLogger:
+    @staticmethod
+    def verbose(prev_stats: Dict[str, float], new_stats: Dict[str, float], name: str) -> None:
+        """
+        Verbose transormations to os.stdout.
+        """
+        for metric in prev_stats.keys():
+            prev: float = prev_stats[metric]
+            new: float = new_stats[metric]
+            log.info_log(f"Change {metric} {name}: {prev:.4f} ===> {new:.4f}")
 
     @staticmethod
-    def __calculate_stats(values: np.ndarray) -> Dict[str, float]:
+    def verbose_list(
+        prev_stats: List[Dict[str, float]], new_stats: List[Dict[str, float]], names: types.ColumnNamesType
+    ) -> None:
+        """
+        Verbose iteratively.
+        """
+        for name, stat_1, stat_2 in zip(names, prev_stats, new_stats):
+            log.info_log("\n")
+            RobustLogger.verbose(stat_1, stat_2, name)
+
+    @staticmethod
+    def calculate_stats(values: np.ndarray) -> Dict[str, float]:
         return {
             "Mean": np.mean(values),
             "Variance": np.var(values),
@@ -173,17 +189,35 @@ class RobustPreprocessor(AbstractFittableTransformer):
             "Range": np.max(values) - np.min(values),
         }
 
-    def __init__(self, tail: str = "both", verbose: bool = True) -> None:
+    @staticmethod
+    def get_stats(df: pd.DataFrame, names: types.ColumnNamesType) -> List[Dict[str, float]]:
+        """
+        Get metrics for all columns.
+        """
+        result: List[Dict[str, float]] = []
+        for name in names:
+            err_msg: str = f"Column name is not in data frame, coumn - {name}"
+            assert name in df.columns, err_msg
+            result.append(RobustLogger.calculate_stats(df[name].values))
+        return result
+
+
+class RobustPreprocessor(AbstractFittableTransformer):
+    available_tails = ["both", "left", "right"]
+    non_serializable_params = ["alpha", "quantiles"]
+
+    def __str__(self) -> str:
+        return "Robust preprocessing"
+
+    def __init__(self, verbose: bool = True) -> None:
         """ """
-        if tail not in self.available_tails:
-            raise ValueError(f"tail must be one of {self.available_tails}")
         self.params = {
-            "tail": tail,
+            "tail": None,
             "column_names": None,
             "alpha": None,
             "quantiles": None,
-            "verbose": verbose,
         }
+        self.verbose = verbose
         super().__init__()
 
     def get_params_dict(self) -> Dict:
@@ -191,7 +225,10 @@ class RobustPreprocessor(AbstractFittableTransformer):
         Returns a dictionary with params.
         """
         self._check_fitted()
-        return self.params
+        return {
+            key: (value if key not in RobustPreprocessor.non_serializable_params else value.tolist())
+            for key, value in self.params.items()
+        }
 
     def load_params_dict(self, params: Dict) -> None:
         """
@@ -202,43 +239,13 @@ class RobustPreprocessor(AbstractFittableTransformer):
         """
         for parameter in self.params:
             if parameter in params:
-                self.params[parameter] = params[parameter]
+                if parameter in RobustPreprocessor.non_serializable_params:
+                    self.params[parameter] = np.array(params[parameter])
+                else:
+                    self.params[parameter] = params[parameter]
             else:
                 raise TypeError(f"params argument must contain: {parameter}")
         self.fitted = True
-
-    @staticmethod
-    def __verbose(prev_stats: Dict[str, float], new_stats: Dict[str, float], name: str) -> None:
-        """
-        Verbose transormations to os.stdout.
-        """
-        for metric in prev_stats.keys():
-            prev: float = prev_stats[metric]
-            new: float = new_stats[metric]
-            log.info_log(f"Change {metric} {name}: {prev:.4f} ===> {new:.4f}")
-
-    @staticmethod
-    def __verbose_list(
-        prev_stats: List[Dict[str, float]], new_stats: List[Dict[str, float]], names: types.ColumnNamesType
-    ) -> None:
-        """
-        Verbose iteratively.
-        """
-        for name, stat_1, stat_2 in zip(names, prev_stats, new_stats):
-            log.info_log("\n")
-            RobustPreprocessor.__verbose(stat_1, stat_2, name)
-
-    @staticmethod
-    def __get_stats(df: pd.DataFrame, names: types.ColumnNamesType) -> List[Dict[str, float]]:
-        """
-        Get metrics for all columns.
-        """
-        result: List[Dict[str, float]] = []
-        for name in names:
-            err_msg: str = f"Column name is not in data frame, coumn - {name}"
-            assert name in df.columns, err_msg
-            result.append(RobustPreprocessor.__calculate_stats(df[name].values))
-        return result
 
     def __wrap_alpha(self, alpha: Union[float, Iterable]) -> np.ndarray:
         columns_num = len(self.params["column_names"])
@@ -254,11 +261,18 @@ class RobustPreprocessor(AbstractFittableTransformer):
             raise ValueError(f"Alpha value must be from 0 to 0.5, but alpha vector = {alpha}")
         return alpha
 
+    def __check_tail(self, tail: str):
+        if tail not in self.available_tails:
+            raise ValueError(f"tail must be one of {RobustPreprocessor.available_tails}")
+        else:
+            return tail
+
     def fit(
         self,
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
         alpha: Union[float, np.ndarray] = 0.05,
+        tail: str = "both",
     ) -> Union[pd.DataFrame, None]:
         """
         Fit.
@@ -267,6 +281,8 @@ class RobustPreprocessor(AbstractFittableTransformer):
         self._check_columns(dataframe, self.params["column_names"])
         columns_num = len(self.params["column_names"])
         self.params["alpha"] = self.__wrap_alpha(alpha)
+        self.params["tail"] = self.__check_tail(tail)
+
         if self.params["tail"] == "both":
             self.params["quantiles"] = np.zeros((columns_num, 2))
             for num, col in enumerate(self.params["column_names"]):
@@ -285,8 +301,8 @@ class RobustPreprocessor(AbstractFittableTransformer):
         """
         self._check_fitted()
         self._check_columns(dataframe, self.params["column_names"])
-        if self.params["verbose"]:
-            prev_stats: List[Dict[str, float]] = RobustPreprocessor.__get_stats(dataframe, self.params["column_names"])
+        if self.verbose:
+            prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         if self.params["tail"] == "both":
@@ -300,10 +316,13 @@ class RobustPreprocessor(AbstractFittableTransformer):
         bad_ids = transformed.loc[mask].index
         transformed.drop(bad_ids, inplace=True)
 
-        if self.params["verbose"]:
-            log.info_log(f"Make robust transformation of columns with alphas = {np.round(self.params['alpha'], 3)}")
-            new_stats: Dict[str, float] = RobustPreprocessor.__get_stats(transformed, self.params["column_names"])
-            RobustPreprocessor.__verbose_list(prev_stats, new_stats, self.params["column_names"])
+        if self.verbose:
+            log.info_log(
+                f"""Making robust transformation of columns {self.params['column_names']}
+                 with alphas = {np.round(self.params['alpha'], 3)}"""
+            )
+            new_stats: Dict[str, float] = RobustLogger.get_stats(transformed, self.params["column_names"])
+            RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
         return None if inplace else transformed
 
     def fit_transform(
@@ -311,23 +330,25 @@ class RobustPreprocessor(AbstractFittableTransformer):
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
         alpha: Union[float, np.ndarray] = 0.05,
+        tail: str = "both",
         inplace: bool = False,
     ):
         """
         Fit-Transform.
         """
-        self.fit(dataframe, column_names, alpha)
+        self.fit(dataframe, column_names, alpha, tail)
         return self.transform(dataframe, inplace)
 
 
 class IQRPreprocessor(AbstractFittableTransformer):
+    non_serializable_params = ["medians", "quartiles"]
+
     def __str__(self) -> str:
         return "IQR outliers preprocessing"
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self, verbose: bool = True) -> None:
         self.params = {"column_names": None, "medians": None, "quartiles": None}
+        self.verbose = verbose
         super().__init__()
 
     def get_params_dict(self) -> Dict:
@@ -335,7 +356,10 @@ class IQRPreprocessor(AbstractFittableTransformer):
         Returns a dictionary with params.
         """
         self._check_fitted()
-        return self.params
+        return {
+            key: (value if key not in IQRPreprocessor.non_serializable_params else value.tolist())
+            for key, value in self.params.items()
+        }
 
     def load_params_dict(self, params: Dict) -> None:
         """
@@ -346,7 +370,10 @@ class IQRPreprocessor(AbstractFittableTransformer):
         """
         for parameter in self.params:
             if parameter in params:
-                self.params[parameter] = params[parameter]
+                if parameter in IQRPreprocessor.non_serializable_params:
+                    self.params[parameter] = np.array(params[parameter])
+                else:
+                    self.params[parameter] = params[parameter]
             else:
                 raise TypeError(f"params argument must contain: {parameter}")
         self.fitted = True
@@ -361,7 +388,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.params["column_names"])
-        X = dataframe[column_names].values
+        X = dataframe[self.params["column_names"]].values
         self.params["quartiles"] = np.quantile(X, (0.25, 0.75), axis=0).T
         self.params["medians"] = np.median(X, axis=0).T
         self.fitted = True
@@ -372,6 +399,9 @@ class IQRPreprocessor(AbstractFittableTransformer):
         """
         self._check_fitted()
         self._check_columns(dataframe, self.params["column_names"])
+        if self.verbose:
+            prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
+
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         iqr = self.params["quartiles"][:, 1] - self.params["quartiles"][:, 0]
         tail = self.params["quartiles"][:, 0] - 1.5 * iqr
@@ -381,6 +411,11 @@ class IQRPreprocessor(AbstractFittableTransformer):
         ).any(axis=1)
         bad_ids = transformed.loc[mask].index
         transformed.drop(bad_ids, inplace=True)
+
+        if self.verbose:
+            log.info_log(f"Making IQR transformation of columns {self.params['column_names']}")
+            new_stats: Dict[str, float] = RobustLogger.get_stats(transformed, self.params["column_names"])
+            RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
         return None if inplace else transformed
 
     def fit_transform(
@@ -418,7 +453,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         self._check_fitted()
         return {
             "column_names": self.column_names,
-            "lambda_": self.lambda_,
+            "lambda_": self.lambda_.tolist(),
         }
 
     def load_params_dict(self, params: Dict) -> None:
@@ -435,7 +470,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         else:
             raise TypeError(f"params argument must contain: {'column_names'}")
         if "lambda_" in params:
-            self.lambda_ = params["lambda_"]
+            self.lambda_ = np.array(params["lambda_"])
         else:
             raise TypeError(f"params argument must contain: {'lambda_'}")
         self.fitted = True
@@ -450,9 +485,9 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         """
         self.column_names = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.column_names)
-        columns_num: int = len(column_names)
+        columns_num: int = len(self.column_names)
         self.lambda_ = np.zeros(columns_num)
-        X = dataframe[column_names].values
+        X = dataframe[self.column_names].values
         for num in range(columns_num):
             self.lambda_[num] = sps.boxcox(X[:, num])[1]
         self.fitted = True

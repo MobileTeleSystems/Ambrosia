@@ -126,7 +126,7 @@ def test_config_constructor(ltv_and_retention_dataset, designer_ltv):
     """
     Config constructor testing
     """
-    with open("./tests/config.yaml", "r") as stream:
+    with open("./tests/configs/designer_config.yaml", "r") as stream:
         designer_from_config = yaml.load(stream, Loader=yaml.Loader)
     designer_from_config.set_dataframe(ltv_and_retention_dataset)
     value_from_config = designer_from_config.run("size")

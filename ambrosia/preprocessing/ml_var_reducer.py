@@ -28,10 +28,10 @@ from sklearn.metrics import mean_squared_error
 
 from ambrosia import types
 from ambrosia.tools import log
-from ambrosia.tools.ab_abstract_component import AbstractVarianceReduction
+from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
 
 
-class MLVarianceReducer(AbstractVarianceReduction):
+class MLVarianceReducer(AbstractVarianceReducer):
     """
     Machine Learning approach for variance reduction.
 

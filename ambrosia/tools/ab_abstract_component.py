@@ -163,7 +163,7 @@ class AbstractFittableTransformer(ABC):
             self.load_params_dict(params)
 
 
-class AbstractVarianceReduction(AbstractFittableTransformer):
+class AbstractVarianceReducer(AbstractFittableTransformer):
     """
     Abstract class for Variance Reduction.
 
@@ -220,7 +220,7 @@ class AbstractVarianceReduction(AbstractFittableTransformer):
         """
         Verbose method for transform operation Log.
         """
-        part_of_variance: float = new_variance / (old_variance + AbstractVarianceReduction.EPSILON)
+        part_of_variance: float = new_variance / (old_variance + AbstractVarianceReducer.EPSILON)
         log.info_log(f"After transformation {self}, the variance is {(part_of_variance * 100):.4f} % of the original")
         log.info_log(f"Variance transformation {old_variance:.4f} ===> {new_variance:.4f}")
 
