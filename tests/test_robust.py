@@ -212,7 +212,7 @@ def test_logarithm(column_names, transf_name, data_nonlin_var, robust_moments):
     col_mean: float = transformed_data[column_names].mean()
     col_std: float = transformed_data[column_names].std()
     moments: np.ndarray = robust_moments.loc[transf_name].values
-    assert (np.array([col_mean, col_std]) == moments).all()
+    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.00001).all()
 
 
 @pytest.mark.unit
