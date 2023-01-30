@@ -306,19 +306,19 @@ class RobustPreprocessor(AbstractFittableTransformer):
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         if self.params["tail"] == "both":
-            mask = (transformed[self.params["column_names"]] <= self.params["quantiles"][:, 0]).any(axis=1) | (
-                transformed[self.params["column_names"]] >= self.params["quantiles"][:, 1]
+            mask = (transformed[self.params["column_names"]] < self.params["quantiles"][:, 0]).any(axis=1) | (
+                transformed[self.params["column_names"]] > self.params["quantiles"][:, 1]
             ).any(axis=1)
         elif self.params["tail"] == "left":
-            mask = (transformed[self.params["column_names"]] <= self.params["quantiles"].T).any(axis=1)
+            mask = (transformed[self.params["column_names"]] < self.params["quantiles"].T).any(axis=1)
         elif self.params["tail"] == "right":
-            mask = (transformed[self.params["column_names"]] >= self.params["quantiles"].T).any(axis=1)
+            mask = (transformed[self.params["column_names"]] > self.params["quantiles"].T).any(axis=1)
         bad_ids = transformed.loc[mask].index
         transformed.drop(bad_ids, inplace=True)
 
         if self.verbose:
             log.info_log(
-                f"""Making robust transformation of columns {self.params['column_names']}
+                f"""Making {self.params['tail']}-tail robust transformation of columns {self.params['column_names']}
                  with alphas = {np.round(self.params['alpha'], 3)}"""
             )
             new_stats: Dict[str, float] = RobustLogger.get_stats(transformed, self.params["column_names"])
