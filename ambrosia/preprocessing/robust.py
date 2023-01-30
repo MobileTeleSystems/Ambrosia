@@ -16,7 +16,7 @@
 Module contains tools for outliers removal from data during a
 preprocessing task.
 """
-from typing import Dict, List, Union, Iterable
+from typing import Dict, Iterable, List, Union
 
 import numpy as np
 import pandas as pd
@@ -264,8 +264,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
     def __check_tail(self, tail: str):
         if tail not in self.available_tails:
             raise ValueError(f"tail must be one of {RobustPreprocessor.available_tails}")
-        else:
-            return tail
+        return tail
 
     def fit(
         self,

@@ -29,7 +29,7 @@ import pandas as pd
 from ambrosia import types
 from ambrosia.preprocessing.aggregate import AggregatePreprocessor
 from ambrosia.preprocessing.cuped import Cuped, MultiCuped
-from ambrosia.preprocessing.robust import RobustPreprocessor, IQRPreprocessor, BoxCoxTransformer, LogTransformer
+from ambrosia.preprocessing.robust import BoxCoxTransformer, IQRPreprocessor, LogTransformer, RobustPreprocessor
 
 
 class Preprocessor:
@@ -171,7 +171,7 @@ class Preprocessor:
         """
         Make IQR preprocessing of given columns to remove outliers.
         """
-        transformer = IQRPreprocessor()
+        transformer = IQRPreprocessor(verbose=self.verbose)
         if load_path is None:
             transformer.fit_transform(self.dataframe, column_names, inplace=True)
         else:

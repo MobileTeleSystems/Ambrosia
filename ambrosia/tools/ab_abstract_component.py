@@ -12,16 +12,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
-import json
 
 import numpy as np
 import pandas as pd
 from yaml import YAMLObjectMetaclass
-
 
 from ambrosia import types
 from ambrosia.tools import log
