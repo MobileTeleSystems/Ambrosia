@@ -57,7 +57,7 @@ class OldRobustPreprocessor:
     >>> robust.run('my_column_with_outliers', alpha=0.05, inplace=True)
     or
     >>> robust.run(['column1', 'column2'], alpha=0.001, inplace=True)
-    You can pass one or number of columns, if several columns passed
+    You can pass one or number of columns, if several columns are passed
     it will drop 2 * alpha percent of extreme values for each column.
     """
 
@@ -212,6 +212,11 @@ class RobustPreprocessor(AbstractFittableTransformer):
     part of outliers, followed by the normal part of the data with another
     alpha part of outliers at the end of the distribution.
 
+    Parameters
+    ----------
+    verbose : bool, default: ``True``
+        If ``True`` will show info about the transformation of passed columns.
+
     Attributes
     ----------
     params : Dict
@@ -219,18 +224,26 @@ class RobustPreprocessor(AbstractFittableTransformer):
         Updated after calling the ``fit`` method.
     verbose : bool
         Verbose info flag.
+    available_tails : List
+        List of the available tail type names to preprocess
+    non_serializable_params: List
+        List of the class parameters that should be converted to lists
+        in order to serialize.
+    fitted : bool
+        Fit flag.
 
     Examples
     --------
     >>> robust = RobustPreprocessor(verbose=True)
-    >>> robust.fit(dataframe, ['column1', 'column2'], alpha=0.05, inplace=True)
+    >>> robust.fit(dataframe, ['column1', 'column2'], alpha=0.05)
+    >>> robust.transform(dataframe, inplace=True)
 
-    You can pass one or number of columns, if several columns passed
+    You can pass one or number of columns, if several columns are passed
     it will drop in total alpha percent of extreme values for each column.
     """
 
-    available_tails = ["both", "left", "right"]
-    non_serializable_params = ["alpha", "quantiles"]
+    available_tails: List = ["both", "left", "right"]
+    non_serializable_params: List = ["alpha", "quantiles"]
 
     def __str__(self) -> str:
         return "Robust preprocessing"
@@ -265,6 +278,8 @@ class RobustPreprocessor(AbstractFittableTransformer):
 
     def load_params_dict(self, params: Dict) -> None:
         """
+        Load prefitted parameters form a dictionary.
+
         Parameters
         ----------
         params : Dict
@@ -294,7 +309,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
             raise ValueError(f"Alpha value must be from 0 to 0.5, but alpha vector = {alpha}")
         return alpha
 
-    def __check_tail(self, tail: str):
+    def __check_tail(self, tail: str) -> str:
         if tail not in self.available_tails:
             raise ValueError(f"tail must be one of {RobustPreprocessor.available_tails}")
         return tail
@@ -302,7 +317,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
     def __calculate_quantiles(
         self,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
         columns_num = len(self.params["column_names"])
         if self.params["tail"] == "both":
             self.params["quantiles"] = np.zeros((columns_num, 2))
@@ -321,13 +336,14 @@ class RobustPreprocessor(AbstractFittableTransformer):
         column_names: types.ColumnNamesType,
         alpha: Union[float, np.ndarray] = 0.05,
         tail: str = "both",
-    ) -> Union[pd.DataFrame, None]:
+    ):
         """
-        Fit to calculate Multi CUPED parameters for target column using selected
-        covariate columns.
+        Fit to calculate robust parameters for the selected columns.
 
         Parameters
         ----------
+        dataframe : pd.DataFrame
+            Dataframe to calculate quantiles.
         column_names : ColumnNamesType
             One or number of columns in the dataframe.
         alpha : Union[float, np.ndarray], default: ``0.05``
@@ -335,8 +351,11 @@ class RobustPreprocessor(AbstractFittableTransformer):
         tail : str, default: ``"both"``
             Part of distribution to be removed.
             Can be ``"left"``, ``"right"`` or ``"both"``.
-        load_path : Path, optional
-            Path to json file with parameters.
+
+        Returns
+        -------
+        self : object
+            Fitted Preprocessor
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.params["column_names"])
@@ -344,10 +363,25 @@ class RobustPreprocessor(AbstractFittableTransformer):
         self.params["tail"] = self.__check_tail(tail)
         self.__calculate_quantiles(dataframe)
         self.fitted = True
+        return self
 
-    def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Transform.
+        Remove objects from the dataframe which are in the head, tail or both
+        alpha parts of chosen metrics distributions.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.params["column_names"])
@@ -356,9 +390,9 @@ class RobustPreprocessor(AbstractFittableTransformer):
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         if self.params["tail"] == "both":
-            mask = (transformed[self.params["column_names"]] < self.params["quantiles"][:, 0]).any(axis=1) | (
-                transformed[self.params["column_names"]] > self.params["quantiles"][:, 1]
-            ).any(axis=1)
+            mask: pd.Series = (transformed[self.params["column_names"]] < self.params["quantiles"][:, 0]).any(
+                axis=1
+            ) | (transformed[self.params["column_names"]] > self.params["quantiles"][:, 1]).any(axis=1)
         elif self.params["tail"] == "left":
             mask = (transformed[self.params["column_names"]] < self.params["quantiles"].T).any(axis=1)
         elif self.params["tail"] == "right":
@@ -382,21 +416,80 @@ class RobustPreprocessor(AbstractFittableTransformer):
         alpha: Union[float, np.ndarray] = 0.05,
         tail: str = "both",
         inplace: bool = False,
-    ):
+    ) -> Union[pd.DataFrame, None]:
         """
-        Fit-Transform.
+        Fit preprocessor parameters using given dataframe and transform it.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to calculate quantiles and for further transformation.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        alpha : Union[float, np.ndarray], default: ``0.05``
+            The percentage of removed data from head and tail.
+        tail : str, default: ``"both"``
+            Part of distribution to be removed.
+            Can be ``"left"``, ``"right"`` or ``"both"``.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self.fit(dataframe, column_names, alpha, tail)
         return self.transform(dataframe, inplace)
 
 
 class IQRPreprocessor(AbstractFittableTransformer):
-    non_serializable_params = ["medians", "quartiles"]
+    """
+    Unit for iqr transformation of the data to exclude outliers.
+
+    It cuts the points from the distribution which are behind the range of
+    0.25 quantile - 1,5 * iqr and 0.75 quantile + 1,5 * iqr
+    for each given metric.
+
+
+    Parameters
+    ----------
+    verbose : bool, default: ``True``
+        If ``True`` will show info about the transformation of passed columns.
+
+    Attributes
+    ----------
+    params : Dict
+        Dictionary with operational parameters of the instance.
+        Updated after calling the ``fit`` method.
+    verbose : bool
+        Verbose info flag.
+    non_serializable_params: List
+        List of the class parameters that should be converted to lists
+        in order to serialize.
+    fitted : bool
+        Fit flag.
+
+    Examples
+    --------
+    >>> iqr = IQRPreprocessor(verbose=True)
+    >>> iqr.fit(dataframe, ['column1', 'column2'])
+    >>> iqr.transform(dataframe, inplace=True)
+
+    You can pass one or number of columns, if several columns are passed
+    it will drop extreme values for each column.
+    """
+
+    non_serializable_params: List = ["medians", "quartiles"]
 
     def __str__(self) -> str:
         return "IQR outliers preprocessing"
 
     def __init__(self, verbose: bool = True) -> None:
+        """
+        IQRPreprocessor class constructor.
+        """
         self.params = {"column_names": None, "medians": None, "quartiles": None}
         self.verbose = verbose
         super().__init__()
@@ -404,6 +497,11 @@ class IQRPreprocessor(AbstractFittableTransformer):
     def get_params_dict(self) -> Dict:
         """
         Returns a dictionary with params.
+
+        Returns
+        -------
+        params : Dict
+            Dictionary with fitted params.
         """
         self._check_fitted()
         return {
@@ -413,10 +511,12 @@ class IQRPreprocessor(AbstractFittableTransformer):
 
     def load_params_dict(self, params: Dict) -> None:
         """
+        Load prefitted parameters form a dictionary.
+
         Parameters
         ----------
         params : Dict
-            Dictionary with params.
+            Dictionary with prefitted params.
         """
         for parameter in self.params:
             if parameter in params:
@@ -432,7 +532,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         self,
         dataframe: pd.DataFrame,
     ):
-        X = dataframe[self.params["column_names"]].values
+        X: np.ndarray = dataframe[self.params["column_names"]].values
         self.params["quartiles"] = np.quantile(X, (0.25, 0.75), axis=0).T
         self.params["medians"] = np.median(X, axis=0).T
 
@@ -440,18 +540,45 @@ class IQRPreprocessor(AbstractFittableTransformer):
         self,
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
-    ) -> None:
+    ):
         """
-        Fit.
+        Fit to calculate iqr parameters for the selected columns.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to calculate quantiles.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+
+        Returns
+        -------
+        self : object
+            Fitted Preprocessor
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.params["column_names"])
         self.__calculate_params(dataframe)
         self.fitted = True
+        return self
 
-    def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Transform.
+        Remove objects from the dataframe which are behind maximum and minimum
+        values of boxplots for each metric distribution.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.params["column_names"])
@@ -459,10 +586,10 @@ class IQRPreprocessor(AbstractFittableTransformer):
             prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
-        iqr = self.params["quartiles"][:, 1] - self.params["quartiles"][:, 0]
-        tail = self.params["quartiles"][:, 0] - 1.5 * iqr
-        head = self.params["quartiles"][:, 1] + 1.5 * iqr
-        mask = (
+        iqr: np.ndarray = self.params["quartiles"][:, 1] - self.params["quartiles"][:, 0]
+        tail: np.ndarray = self.params["quartiles"][:, 0] - 1.5 * iqr
+        head: np.ndarray = self.params["quartiles"][:, 1] + 1.5 * iqr
+        mask: pd.Series = (
             (transformed[self.params["column_names"]] < tail) | (transformed[self.params["column_names"]] > head)
         ).any(axis=1)
         bad_ids = transformed.loc[mask].index
@@ -479,9 +606,24 @@ class IQRPreprocessor(AbstractFittableTransformer):
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
         inplace: bool = False,
-    ):
+    ) -> Union[pd.DataFrame, None]:
         """
-        Fit-Transform.
+        Fit preprocessor parameters using given dataframe and transform it.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to calculate quantiles and for further transformation.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self.fit(dataframe, column_names)
         return self.transform(dataframe, inplace)
@@ -489,7 +631,31 @@ class IQRPreprocessor(AbstractFittableTransformer):
 
 class BoxCoxTransformer(AbstractFittableTransformer):
     """
-    Unit for Box-Cox transformation of pandas data.
+    Unit for a Box-Cox transformation of the pandas data.
+
+    A Box Cox transformation helps to transform non-normal dependent variables
+    into a normal shape. All variables values must be positive.
+
+    Optimal transformation lambdas are selected automatically during
+    the transformer fit process.
+
+
+    Attributes
+    ----------
+    column_names : List
+        Names of column which will be selected for the transformation.
+    lambda_ : np.ndarray
+        Array of parameters using during the transformation of the
+        selected columns.
+    fitted : bool
+        Fit flag.
+
+    Examples
+    --------
+    >>> boxcox = BoxCoxTransformer()
+    >>> boxcox.fit(dataframe, ['column1', 'column2'])
+    >>> boxcox.transform(dataframe, inplace=True)
+
     """
 
     def __str__(self) -> str:
@@ -498,13 +664,31 @@ class BoxCoxTransformer(AbstractFittableTransformer):
     def __init__(
         self,
     ) -> None:
+        """
+        BoxCoxTransformer class constructor.
+        """
         self.column_names = None
         self.lambda_ = None
         super().__init__()
 
+    def __calculate_lambda_(
+        self,
+        dataframe: pd.DataFrame,
+    ) -> None:
+        columns_num: int = len(self.column_names)
+        self.lambda_ = np.zeros(columns_num)
+        X: np.ndarray = dataframe[self.column_names].values
+        for num in range(columns_num):
+            self.lambda_[num] = sps.boxcox(X[:, num])[1]
+
     def get_params_dict(self) -> Dict:
         """
         Returns a dictionary with params.
+
+        Returns
+        -------
+        params : Dict
+            Dictionary with fitted params.
         """
         self._check_fitted()
         return {
@@ -535,27 +719,49 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         self,
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
-    ) -> None:
+    ):
         """
-        Fit.
+        Fit to calculate transformation parameters for the selected columns.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to calculate optimal transformation parameters.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+
+        Returns
+        -------
+        self : object
+            Fitted Transformer
         """
         self.column_names = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.column_names)
-        columns_num: int = len(self.column_names)
-        self.lambda_ = np.zeros(columns_num)
-        X = dataframe[self.column_names].values
-        for num in range(columns_num):
-            self.lambda_[num] = sps.boxcox(X[:, num])[1]
+        self.__calculate_lambda_(dataframe)
         self.fitted = True
+        return self
 
-    def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Transform.
+        Apply Box-Cox transformation for the data.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
-        X = transformed[self.column_names].values
+        X: np.ndarray = transformed[self.column_names].values
         for num in range(len(self.column_names)):
             if self.lambda_[num] == 0:
                 X[:, num] = np.log(X[:, num])
@@ -569,21 +775,50 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
         inplace: bool = False,
-    ):
+    ) -> Union[pd.DataFrame, None]:
         """
-        Fit-Transform.
+        Fit transformer parameters using given dataframe and transform it.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe for calculation of optimal parameters and further
+            transformation.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self.fit(dataframe, column_names)
         return self.transform(dataframe, inplace)
 
-    def inverse_transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def inverse_transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Inverse transform.
+        Apply inverse Box-Cox transformation for the data.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to inverse transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
-        X_tr = transformed[self.column_names].values
+        X_tr: np.ndarray = transformed[self.column_names].values
         for num in range(len(self.column_names)):
             if self.lambda_[num] == 0:
                 X_tr[:, num] = np.exp(X_tr[:, num])
@@ -595,13 +830,35 @@ class BoxCoxTransformer(AbstractFittableTransformer):
 
 class LogTransformer(AbstractFittableTransformer):
     """
-    Unit for logarithmic transformation of the data.
+    Unit for a logarithmic transformation of the pandas data.
+
+    A logarithmic transformation helps to transform some metrics distributions
+    into a more normal shape and reduce the variance.
+    All metrics values must be positive.
+
+
+    Attributes
+    ----------
+    column_names : List
+        Names of column which will be selected for the transformation.
+    fitted : bool
+        Fit flag.
+
+    Examples
+    --------
+    >>> log = LogTransformer()
+    >>> log.fit(dataframe, ['column1', 'column2'])
+    >>> log.transform(dataframe, inplace=True)
+
     """
 
     def __str__(self) -> str:
         return "Logarithmic transformation"
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+        LogTransformer class constructor.
+        """
         self.column_names = None
         super().__init__()
 
@@ -633,17 +890,43 @@ class LogTransformer(AbstractFittableTransformer):
         self,
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
-    ) -> None:
+    ):
         """
-        Fit.
+        Fit names of the selected columns.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe with metrics.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+
+        Returns
+        -------
+        self : object
+            Fitted Transformer
         """
         self.column_names = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.column_names)
         self.fitted = True
+        return self
 
-    def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Transform.
+        Apply log transformation for the data.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.column_names)
@@ -659,16 +942,46 @@ class LogTransformer(AbstractFittableTransformer):
         dataframe: pd.DataFrame,
         column_names: types.ColumnNamesType,
         inplace: bool = False,
-    ):
+    ) -> Union[pd.DataFrame, None]:
         """
-        Fit-Transform.
+        Fit transformer parameters using given dataframe and transform it.
+
+        Only column names are fittable.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to transform.
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self.fit(dataframe, column_names)
         return self.transform(dataframe, inplace)
 
-    def inverse_transform(self, dataframe: pd.DataFrame, inplace: bool = False):
+    def inverse_transform(self, dataframe: pd.DataFrame, inplace: bool = False) -> Union[pd.DataFrame, None]:
         """
-        Inverse transform.
+        Apply inverse log transformation for the data.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Dataframe to inverse transform.
+        inplace : bool, default: ``False``
+            If ``True`` transforms the given dataframe, otherwise copy and
+            returns an another one.
+
+        Returns
+        -------
+        df : Union[pd.DataFrame, None]
+            Transformed dataframe or None
         """
         self._check_fitted()
         self._check_columns(dataframe, self.column_names)
