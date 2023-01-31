@@ -203,6 +203,32 @@ class RobustLogger:
 
 
 class RobustPreprocessor(AbstractFittableTransformer):
+    """
+    Unit for simple robust transformation for avoiding outliers in data.
+
+    It cuts the alpha percentage of distribution from head, tail or both sides
+    for each given metric.
+    The data distribution structure assumed to present as small alpha
+    part of outliers, followed by the normal part of the data with another
+    alpha part of outliers at the end of the distribution.
+
+    Attributes
+    ----------
+    params : Dict
+        Dictionary with operational parameters of the instance.
+        Updated after calling the ``fit`` method.
+    verbose : bool
+        Verbose info flag.
+
+    Examples
+    --------
+    >>> robust = RobustPreprocessor(verbose=True)
+    >>> robust.fit(dataframe, ['column1', 'column2'], alpha=0.05, inplace=True)
+
+    You can pass one or number of columns, if several columns passed
+    it will drop in total alpha percent of extreme values for each column.
+    """
+
     available_tails = ["both", "left", "right"]
     non_serializable_params = ["alpha", "quantiles"]
 
@@ -210,7 +236,9 @@ class RobustPreprocessor(AbstractFittableTransformer):
         return "Robust preprocessing"
 
     def __init__(self, verbose: bool = True) -> None:
-        """ """
+        """
+        RobustPreprocessor class constructor.
+        """
         self.params = {
             "tail": None,
             "column_names": None,
@@ -223,6 +251,11 @@ class RobustPreprocessor(AbstractFittableTransformer):
     def get_params_dict(self) -> Dict:
         """
         Returns a dictionary with params.
+
+        Returns
+        -------
+        params : Dict
+            Dictionary with fitted params.
         """
         self._check_fitted()
         return {
@@ -235,7 +268,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
         Parameters
         ----------
         params : Dict
-            Dictionary with params.
+            Dictionary with prefitted params.
         """
         for parameter in self.params:
             if parameter in params:
@@ -266,22 +299,11 @@ class RobustPreprocessor(AbstractFittableTransformer):
             raise ValueError(f"tail must be one of {RobustPreprocessor.available_tails}")
         return tail
 
-    def fit(
+    def __calculate_quantiles(
         self,
         dataframe: pd.DataFrame,
-        column_names: types.ColumnNamesType,
-        alpha: Union[float, np.ndarray] = 0.05,
-        tail: str = "both",
-    ) -> Union[pd.DataFrame, None]:
-        """
-        Fit.
-        """
-        self.params["column_names"] = self._wrap_cols(column_names)
-        self._check_columns(dataframe, self.params["column_names"])
+    ):
         columns_num = len(self.params["column_names"])
-        self.params["alpha"] = self.__wrap_alpha(alpha)
-        self.params["tail"] = self.__check_tail(tail)
-
         if self.params["tail"] == "both":
             self.params["quantiles"] = np.zeros((columns_num, 2))
             for num, col in enumerate(self.params["column_names"]):
@@ -292,6 +314,35 @@ class RobustPreprocessor(AbstractFittableTransformer):
             for num, col in enumerate(self.params["column_names"]):
                 alpha = self.params["alpha"][num] if self.params["tail"] == "left" else 1 - self.params["alpha"][num]
                 self.params["quantiles"][num] = np.quantile(dataframe[col].values, alpha)
+
+    def fit(
+        self,
+        dataframe: pd.DataFrame,
+        column_names: types.ColumnNamesType,
+        alpha: Union[float, np.ndarray] = 0.05,
+        tail: str = "both",
+    ) -> Union[pd.DataFrame, None]:
+        """
+        Fit to calculate Multi CUPED parameters for target column using selected
+        covariate columns.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        alpha : Union[float, np.ndarray], default: ``0.05``
+            The percentage of removed data from head and tail.
+        tail : str, default: ``"both"``
+            Part of distribution to be removed.
+            Can be ``"left"``, ``"right"`` or ``"both"``.
+        load_path : Path, optional
+            Path to json file with parameters.
+        """
+        self.params["column_names"] = self._wrap_cols(column_names)
+        self._check_columns(dataframe, self.params["column_names"])
+        self.params["alpha"] = self.__wrap_alpha(alpha)
+        self.params["tail"] = self.__check_tail(tail)
+        self.__calculate_quantiles(dataframe)
         self.fitted = True
 
     def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
@@ -377,6 +428,14 @@ class IQRPreprocessor(AbstractFittableTransformer):
                 raise TypeError(f"params argument must contain: {parameter}")
         self.fitted = True
 
+    def __calculate_params(
+        self,
+        dataframe: pd.DataFrame,
+    ):
+        X = dataframe[self.params["column_names"]].values
+        self.params["quartiles"] = np.quantile(X, (0.25, 0.75), axis=0).T
+        self.params["medians"] = np.median(X, axis=0).T
+
     def fit(
         self,
         dataframe: pd.DataFrame,
@@ -387,9 +446,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.params["column_names"])
-        X = dataframe[self.params["column_names"]].values
-        self.params["quartiles"] = np.quantile(X, (0.25, 0.75), axis=0).T
-        self.params["medians"] = np.median(X, axis=0).T
+        self.__calculate_params(dataframe)
         self.fitted = True
 
     def transform(self, dataframe: pd.DataFrame, inplace: bool = False):
@@ -580,7 +637,7 @@ class LogTransformer(AbstractFittableTransformer):
         """
         Fit.
         """
-        self.column_names = self._wrap_cols(column_names)  # ATTENTION HERE
+        self.column_names = self._wrap_cols(column_names)
         self._check_columns(dataframe, self.column_names)
         self.fitted = True
 
