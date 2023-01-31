@@ -5,17 +5,17 @@ Preprocessing
 .. currentmodule:: ambrosia.preprocessing
 
 .. autosummary::
-    :nosignatures:
+   :nosignatures:
 
-    Preprocessor
-    AggregatePreprocessor
-    RobustPreprocessor
-    IQRPreprocessor
-    BoxCoxTransformer
-    LogTransformer
-    Cuped
-    MultiCuped
-    MLVarianceReducer
+   Preprocessor
+   AggregatePreprocessor
+   RobustPreprocessor
+   IQRPreprocessor
+   BoxCoxTransformer
+   LogTransformer
+   Cuped
+   MultiCuped
+   MLVarianceReducer
 
 .. autoclass:: ambrosia.preprocessing.Preprocessor
    :members: aggregate, robust, iqr, boxcox, log, cuped, data, transformations
