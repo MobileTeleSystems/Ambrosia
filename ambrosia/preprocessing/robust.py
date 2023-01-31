@@ -813,3 +813,57 @@ class LogTransformer(AbstractFittableTransformer):
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         transformed[self.column_names] = np.exp(transformed[self.column_names].values)
         return None if inplace else transformed
+
+
+class RobustLogger:
+    """
+    Temporary class with methods for calculating and logging changes
+    in the characteristics of metric distributions during the preprocessing.
+    """
+
+    @staticmethod
+    def verbose(prev_stats: Dict[str, float], new_stats: Dict[str, float], name: str) -> None:
+        """
+        Verbose transormations to os.stdout.
+        """
+        for metric in prev_stats.keys():
+            prev: float = prev_stats[metric]
+            new: float = new_stats[metric]
+            log.info_log(f"Change {metric} {name}: {prev:.4f} ===> {new:.4f}")
+
+    @staticmethod
+    def verbose_list(
+        prev_stats: List[Dict[str, float]],
+        new_stats: List[Dict[str, float]],
+        names: types.ColumnNamesType,
+    ) -> None:
+        """
+        Verbose iteratively.
+        """
+        for name, stat_1, stat_2 in zip(names, prev_stats, new_stats):
+            log.info_log("\n")
+            RobustLogger.verbose(stat_1, stat_2, name)
+
+    @staticmethod
+    def calculate_stats(values: np.ndarray) -> Dict[str, float]:
+        return {
+            "Mean": np.mean(values),
+            "Variance": np.var(values),
+            "IQR": np.quantile(values, 0.75) - np.quantile(values, 0.25),
+            "Range": np.max(values) - np.min(values),
+        }
+
+    @staticmethod
+    def get_stats(
+        df: pd.DataFrame,
+        names: types.ColumnNamesType,
+    ) -> List[Dict[str, float]]:
+        """
+        Get metrics for all columns.
+        """
+        result: List[Dict[str, float]] = []
+        for name in names:
+            err_msg: str = f"Column name is not in data frame, coumn - {name}"
+            assert name in df.columns, err_msg
+            result.append(RobustLogger.calculate_stats(df[name].values))
+        return result
