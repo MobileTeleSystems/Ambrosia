@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 from pathlib import Path
@@ -79,7 +80,87 @@ class ABToolAbstract(ABC):
         return chosen_args
 
 
-class AbstractVarianceReduction(ABC):
+class AbstractFittableTransformer(ABC):
+    """
+    Abstract class for fittable transformer.
+    """
+
+    @abstractmethod
+    def get_params_dict(self) -> Dict:
+        """
+        Returns a dictionary with params.
+        """
+
+    @abstractmethod
+    def load_params_dict(self, params: Dict) -> None:
+        """
+        Load model parameters from the dictionary.
+
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with params.
+        """
+
+    @abstractmethod
+    def fit(self):
+        """
+        Fit class parameters on some data.
+        """
+
+    @abstractmethod
+    def transform(self):
+        """
+        Transform data using fitted parameters.
+        """
+
+    @abstractmethod
+    def fit_transform(self):
+        """
+        Fit class parameters on some data and transform it.
+        """
+
+    def __init__(self):
+        self.fitted: bool = False
+
+    def _check_fitted(self) -> None:
+        if not self.fitted:
+            raise RuntimeError("Call fit method !!!")
+
+    def _check_columns(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
+        for column in columns:
+            if column not in dataframe:
+                raise ValueError(f"Column {column} is not in Data Frame columns list")
+
+    @staticmethod
+    def _wrap_cols(var: Union[types.ColumnNameType, types.ColumnNamesType]):
+        if isinstance(var, types.ColumnNameType):
+            var = [var]
+        return var
+
+    def store_params(self, store_path: Path) -> None:
+        """
+        Parameters
+        ----------
+        store_path : Path
+            Path where parameters will be stored in a json format.
+        """
+        with open(store_path, "w+") as file:
+            json.dump(self.get_params_dict(), file)
+
+    def load_params(self, load_path: Path) -> None:
+        """
+        Parameters
+        ----------
+        load_path : Path
+            Path to json file with parameters.
+        """
+        with open(load_path, "r+") as file:
+            params = json.load(file)
+            self.load_params_dict(params)
+
+
+class AbstractVarianceReducer(AbstractFittableTransformer):
     """
     Abstract class for Variance Reduction.
 
@@ -94,30 +175,6 @@ class AbstractVarianceReduction(ABC):
     """
 
     EPSILON: float = 1e-5
-
-    @abstractmethod
-    def store_params(self, store_path: Path) -> None:
-        """
-        Store model params into file.
-        """
-
-    @abstractmethod
-    def load_params(self, load_path: Path) -> None:
-        """
-        Load model params from file.
-        """
-
-    @abstractmethod
-    def fit(self):
-        """
-        Fit class parameters on some data.
-        """
-
-    @abstractmethod
-    def fit_transform(self):
-        """
-        Fit class parameters on some data and transform it.
-        """
 
     @abstractmethod
     def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:  # pylint: disable=C0103
@@ -135,17 +192,8 @@ class AbstractVarianceReduction(ABC):
         if target_column not in dataframe.columns:
             raise ValueError(f"Target column {target_column} is not in Data Frame columns list")
         self.target_column = target_column
-        self.fitted: bool = False
         self.verbose: bool = verbose
-
-    def _check_fitted(self) -> None:
-        if not self.fitted:
-            raise RuntimeError("Call fit method !!!")
-
-    def _check_columns(self, columns: types.ColumnNameType) -> None:
-        for column in columns:
-            if column not in self.df.columns:
-                raise ValueError(f"Column {column} is not in Data Frame columns list")
+        super().__init__()
 
     def _return_result(
         self, new_target: np.ndarray, inplace: bool, name: Union[types.ColumnNameType, None]
@@ -163,7 +211,7 @@ class AbstractVarianceReduction(ABC):
         """
         Verbose method for transform operation Log.
         """
-        part_of_variance: float = new_variance / (old_variance + AbstractVarianceReduction.EPSILON)
+        part_of_variance: float = new_variance / (old_variance + AbstractVarianceReducer.EPSILON)
         log.info_log(f"After transformation {self}, the variance is {(part_of_variance * 100):.4f} % of the original")
         log.info_log(f"Variance transformation {old_variance:.4f} ===> {new_variance:.4f}")
 

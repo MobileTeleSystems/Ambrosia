@@ -4,25 +4,41 @@ from ambrosia.preprocessing import Preprocessor
 
 
 @pytest.mark.smoke()
-def test_init(data_notlin_var):
+def test_init(data_nonlin_var):
     """
     Instantiation of preprocessor class
     """
-    transformer = Preprocessor(data_notlin_var, verbose=False)
+    transformer = Preprocessor(data_nonlin_var, verbose=False)
     transformer.data()
     transformer.data(copy=True)
 
 
 @pytest.mark.smoke()
-def test_cuped_sequential(data_notlin_var):
+def test_cuped_sequential(data_nonlin_var):
     """
     Test sequential cuped + robust
     """
-    transformer = Preprocessor(data_notlin_var, verbose=False)
+    transformer = Preprocessor(data_nonlin_var, verbose=False)
     transformed = (
         transformer.robust("target", alpha=0.005)
         .cuped("target", "feature_1", name="target_1")
         .cuped("target_1", "feature_2", name="target_2")
         .cuped("target_2", "feature_3", name="target_3")
+        .data()
+    )
+
+
+@pytest.mark.smoke()
+def test_full_sequential(data_nonlin_var):
+    """
+    Test sequential cuped + robust
+    """
+    transformer = Preprocessor(data_nonlin_var, verbose=False)
+    transformed = (
+        transformer.robust("feature_1", alpha=0.01, tail="right")
+        .iqr(["feature_2", "feature_3"])
+        .log("feature_1")
+        .boxcox(["feature_2", "feature_3"])
+        .cuped("target", "feature_3", name="target_cuped")
         .data()
     )

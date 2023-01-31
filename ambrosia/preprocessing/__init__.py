@@ -20,6 +20,16 @@ from .aggregate import AggregatePreprocessor
 from .cuped import Cuped, MultiCuped
 from .ml_var_reducer import MLVarianceReducer
 from .preprocessor import Preprocessor
-from .robust import RobustPreprocessor
+from .robust import BoxCoxTransformer, IQRPreprocessor, LogTransformer, RobustPreprocessor
 
-__all__ = ["AggregatePreprocessor", "Cuped", "MultiCuped", "MLVarianceReducer", "Preprocessor", "RobustPreprocessor"]
+__all__ = [
+    "AggregatePreprocessor",
+    "Cuped",
+    "MultiCuped",
+    "MLVarianceReducer",
+    "Preprocessor",
+    "RobustPreprocessor",
+    "IQRPreprocessor",
+    "BoxCoxTransformer",
+    "LogTransformer",
+]

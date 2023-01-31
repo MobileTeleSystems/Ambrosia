@@ -29,7 +29,7 @@ import pandas as pd
 from ambrosia import types
 from ambrosia.preprocessing.aggregate import AggregatePreprocessor
 from ambrosia.preprocessing.cuped import Cuped, MultiCuped
-from ambrosia.preprocessing.robust import RobustPreprocessor
+from ambrosia.preprocessing.robust import BoxCoxTransformer, IQRPreprocessor, LogTransformer, RobustPreprocessor
 
 
 class Preprocessor:
@@ -67,7 +67,8 @@ class Preprocessor:
         Returns a copy or a link for the stored dataframe.
     cuped(target, by, name, load_path)
         Make cuped transformation for stored dataframe.
-    aggregate(groupby_columns, categorial_method, real_method, agg_params, real_cols, categorial_cols)
+    aggregate(groupby_columns, categorial_method, real_method, agg_params,
+              real_cols, categorial_cols)
         Aggreagate data by columns.
     robust(column_name, alpha=0.05)
         Make a robust transformation.
@@ -93,72 +94,13 @@ class Preprocessor:
         ----------
         copy : bool, default: ``True``
             If true returns copy, otherwise link
-        """
-        return self.dataframe if copy else self.dataframe.copy()
 
-    def cuped(
-        self,
-        target: types.ColumnNameType,
-        by: types.ColumnNameType,
-        name: Optional[str] = None,
-        load_path: Optional[Path] = None,
-    ) -> Preprocessor:
+        Returns
+        -------
+        dataframe : pd.DataFrame
+            Table with the modified data after the sequential preprocessing.
         """
-        Make CUPED transformation for the chosen column.
-
-        Parameters
-        ----------
-        target : ColumnNameType
-            Column from the dataframe, for which CUPED transformation will be
-            applied.
-        by : ColumnNameType
-            Covariance column in the dataframe.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
-        load_path : Path, optional
-            Path to a json file with parameters.
-        """
-        transformer = Cuped(self.dataframe, target, verbose=self.verbose)
-        if load_path is None:
-            transformer.fit_transform(by, inplace=True, name=name)
-        else:
-            transformer.load_params(load_path)
-            transformer.transform(by, inplace=True, name=name)
-        self.transformers.append(transformer)
-        return self
-
-    def multicuped(
-        self,
-        target: types.ColumnNameType,
-        by: types.ColumnNamesType,
-        name: Optional[str] = None,
-        load_path: Optional[Path] = None,
-    ) -> Preprocessor:
-        """
-        Make Multi CUPED transformation for the chosen column.
-
-        Parameters
-        ----------
-        target : ColumnNameType
-            Column from the dataframe, for which CUPED transformation will be
-            applied.
-        by : ColumnNameType
-            Covariance columns in the dataframe.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
-        load_path : Path, optional
-            Path to a json file with parameters.
-        """
-        transformer = MultiCuped(self.dataframe, target, verbose=self.verbose)
-        if load_path is None:
-            transformer.fit_transform(by, inplace=True, name=name)
-        else:
-            transformer.load_params(load_path)
-            transformer.transform(by, inplace=True, name=name)
-        self.transformers.append(transformer)
-        return self
+        return self.dataframe.copy() if copy else self.dataframe
 
     def aggregate(
         self,
@@ -192,18 +134,35 @@ class Preprocessor:
             Columns with categorial metrics
             Overriden by ``agg_params`` parameter and could be passed if
             expected default aggregation behavior.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = AggregatePreprocessor(categorial_method, real_method)
-        self.dataframe = transformer.run(self.dataframe, groupby_columns, agg_params, real_cols, categorial_cols)
+        self.dataframe = transformer.run(
+            self.dataframe,
+            groupby_columns,
+            agg_params,
+            real_cols,
+            categorial_cols,
+        )
         self.transformers.append(transformer)
         return self
 
-    def robust(self, column_names: types.ColumnNamesType, alpha: float = 0.05) -> Preprocessor:
+    def robust(
+        self,
+        column_names: types.ColumnNamesType,
+        alpha: float = 0.05,
+        tail: str = "both",
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
         """
-        Make a robust transformation.
+        Make a robust preprocessing of the selected columns to remove outliers.
 
-        Remove objects from the dataframe which are in the head and tail alpha
-        parts of chosen metrics distributions.
+        Removes objects from the dataframe which are in the head, end or
+        both tail parts of the selected metrics distributions.
 
         Parameters
         ----------
@@ -211,9 +170,189 @@ class Preprocessor:
             One or number of columns in the dataframe.
         alpha : float, default: ``0.05``
             The percentage of removed data from head and tail.
+        tail : str, default: ``"both"``
+            Part of distribution to be removed.
+            Can be ``"left"``, ``"right"`` or ``"both"``.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
-        transformer = RobustPreprocessor(self.dataframe, verbose=self.verbose)
-        transformer.run(column_names, alpha, inplace=True)
+        transformer = RobustPreprocessor(verbose=self.verbose)
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, alpha, tail, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def iqr(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make an IQR preprocessing of the selected columns to remove outliers.
+
+        Removes objects from the dataframe which are behind boxplot maximum
+        and minimum of the selected metrics distributions.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
+        """
+        transformer = IQRPreprocessor(verbose=self.verbose)
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def boxcox(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make a Box-Cox transformation on the selected columns.
+
+        Optimal transformation parameters are selected automatically.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
+        """
+        transformer = BoxCoxTransformer()
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def log(
+        self,
+        column_names: types.ColumnNamesType,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make a logarithmic transformation on the selected columns.
+
+        Parameters
+        ----------
+        column_names : ColumnNamesType
+            One or number of columns in the dataframe.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
+        """
+        transformer = LogTransformer()
+        if load_path is None:
+            transformer.fit_transform(self.dataframe, column_names, inplace=True)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(self.dataframe, inplace=True)
+        self.transformers.append(transformer)
+        return self
+
+    def cuped(
+        self,
+        target: types.ColumnNameType,
+        by: types.ColumnNameType,
+        name: Optional[str] = None,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make CUPED transformation on the selected column.
+
+        Parameters
+        ----------
+        target : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
+        by : ColumnNameType
+            Covariance column in the dataframe.
+        name : str
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
+        """
+        transformer = Cuped(self.dataframe, target, verbose=self.verbose)
+        if load_path is None:
+            transformer.fit_transform(by, inplace=True, name=name)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(by, inplace=True, name=name)
+        self.transformers.append(transformer)
+        return self
+
+    def multicuped(
+        self,
+        target: types.ColumnNameType,
+        by: types.ColumnNamesType,
+        name: Optional[str] = None,
+        load_path: Optional[Path] = None,
+    ) -> Preprocessor:
+        """
+        Make Multi CUPED transformation on the selected column.
+
+        Parameters
+        ----------
+        target : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
+        by : ColumnNameType
+            Covariance columns in the dataframe.
+        name : str
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
+        load_path : Path, optional
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
+        """
+        transformer = MultiCuped(self.dataframe, target, verbose=self.verbose)
+        if load_path is None:
+            transformer.fit_transform(by, inplace=True, name=name)
+        else:
+            transformer.load_params(load_path)
+            transformer.transform(by, inplace=True, name=name)
         self.transformers.append(transformer)
         return self
 

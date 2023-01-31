@@ -24,10 +24,10 @@ import numpy as np
 import pandas as pd
 
 from ambrosia import types
-from ambrosia.tools.ab_abstract_component import AbstractVarianceReduction
+from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
 
 
-class Cuped(AbstractVarianceReduction):
+class Cuped(AbstractVarianceReducer):
     """
     Class for data CUPED transformation.
 
@@ -138,6 +138,8 @@ class Cuped(AbstractVarianceReduction):
 
     def load_params_dict(self, params: Dict) -> None:
         """
+        Load model parameters from the dictionary.
+
         Parameters
         ----------
         params : Dict
@@ -152,27 +154,6 @@ class Cuped(AbstractVarianceReduction):
         else:
             raise TypeError(f"params argument must contain: {Cuped.BIAS_NAME}")
         self.fitted = True
-
-    def store_params(self, store_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        store_path : Path
-            Path where parameters will be stored in a json format.
-        """
-        with open(store_path, "w+") as file:
-            json.dump(self.get_params_dict(), file)
-
-    def load_params(self, load_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        load_path : Path
-            Path to a json file with parameters.
-        """
-        with open(load_path, "r+") as file:
-            params = json.load(file)
-            self.load_params_dict(params)
 
     def fit(self, covariate_column: types.ColumnNameType) -> None:
         """
@@ -217,7 +198,7 @@ class Cuped(AbstractVarianceReduction):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns([covariate_column])
+        self._check_columns(self.df, [covariate_column])
         old_variance: float = self.cov.loc[self.target_column, self.target_column]
         new_target: np.ndarray = self(self.df[self.target_column], self.df[covariate_column])
         new_variance: float = np.var(new_target)
@@ -250,7 +231,7 @@ class Cuped(AbstractVarianceReduction):
         return self.transform(covariate_column, inplace, name)
 
 
-class MultiCuped(AbstractVarianceReduction):
+class MultiCuped(AbstractVarianceReducer):
     """
     Class for data Multi CUPED transformation.
 
@@ -354,6 +335,36 @@ class MultiCuped(AbstractVarianceReduction):
         self.bias = None
         self.cov: pd.DataFrame = dataframe.cov()
 
+    def get_params_dict(self) -> Dict:
+        """
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with params.
+        """
+        self._check_fitted()
+        return {
+            MultiCuped.THETA_NAME: self.theta,
+            MultiCuped.BIAS_NAME: self.bias,
+        }
+
+    def load_params_dict(self, params: Dict) -> None:
+        """
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with params.
+        """
+        if MultiCuped.THETA_NAME in params:
+            self.theta = params[MultiCuped.THETA_NAME]
+        else:
+            raise TypeError(f"params argument must contain: {MultiCuped.THETA_NAME}")
+        if MultiCuped.BIAS_NAME in params:
+            self.bias = params[MultiCuped.BIAS_NAME]
+        else:
+            raise TypeError(f"params argument must contain: {MultiCuped.BIAS_NAME}")
+        self.fitted = True
+
     def store_params(self, store_path: Path) -> None:
         """
         Parameters
@@ -369,42 +380,12 @@ class MultiCuped(AbstractVarianceReduction):
             params["bias"] = self.bias
             json.dump(params, file)
 
-    def get_params_dict(self) -> Dict:
-        """
-        Parameters
-        ----------
-        params : Dict
-            Dictionary with params.
-        """
-        self._check_fitted()
-        return {
-            Cuped.THETA_NAME: self.theta,
-            Cuped.BIAS_NAME: self.bias,
-        }
-
-    def load_params_dict(self, params: Dict) -> None:
-        """
-        Parameters
-        ----------
-        params : Dict
-            Dictionary with params.
-        """
-        if Cuped.THETA_NAME in params:
-            self.theta = params[Cuped.THETA_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {Cuped.THETA_NAME}")
-        if Cuped.BIAS_NAME in params:
-            self.bias = params[Cuped.BIAS_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {Cuped.BIAS_NAME}")
-        self.fitted = True
-
     def load_params(self, load_path: Path) -> None:
         """
         Parameters
         ----------
         load_path : Path
-            Path to a json file with parameters.
+            Path to json file with parameters.
         """
         with open(load_path, "r+") as file:
             params = json.load(file)
@@ -417,7 +398,7 @@ class MultiCuped(AbstractVarianceReduction):
 
     def fit(self, covariate_columns: types.ColumnNamesType) -> None:
         """
-        Fit to calculate Multi CUPED parameters for target column using given
+        Fit to calculate Multi CUPED parameters for target column using selected
         covariate columns.
 
         Parameters
@@ -426,7 +407,7 @@ class MultiCuped(AbstractVarianceReduction):
             Columns which will be used as the covariates in Multi CUPED
             transformation.
         """
-        self._check_columns(covariate_columns)
+        self._check_columns(self.df, covariate_columns)
         matrix: np.ndarray = self.cov.loc[covariate_columns, covariate_columns]
         amount_features: int = len(covariate_columns)
         covariance_target: np.ndarray = self.cov.loc[covariate_columns, self.target_column].values.reshape(
@@ -461,7 +442,7 @@ class MultiCuped(AbstractVarianceReduction):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns(covariate_columns)
+        self._check_columns(self.df, covariate_columns)
         old_variance: float = self.cov.loc[self.target_column, self.target_column]
         self._check_fitted()
         new_target: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
