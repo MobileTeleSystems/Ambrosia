@@ -67,7 +67,8 @@ class Preprocessor:
         Returns a copy or a link for the stored dataframe.
     cuped(target, by, name, load_path)
         Make cuped transformation for stored dataframe.
-    aggregate(groupby_columns, categorial_method, real_method, agg_params, real_cols, categorial_cols)
+    aggregate(groupby_columns, categorial_method, real_method, agg_params,
+              real_cols, categorial_cols)
         Aggreagate data by columns.
     robust(column_name, alpha=0.05)
         Make a robust transformation.
@@ -133,9 +134,20 @@ class Preprocessor:
             Columns with categorial metrics
             Overriden by ``agg_params`` parameter and could be passed if
             expected default aggregation behavior.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = AggregatePreprocessor(categorial_method, real_method)
-        self.dataframe = transformer.run(self.dataframe, groupby_columns, agg_params, real_cols, categorial_cols)
+        self.dataframe = transformer.run(
+            self.dataframe,
+            groupby_columns,
+            agg_params,
+            real_cols,
+            categorial_cols,
+        )
         self.transformers.append(transformer)
         return self
 
@@ -162,7 +174,12 @@ class Preprocessor:
             Part of distribution to be removed.
             Can be ``"left"``, ``"right"`` or ``"both"``.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = RobustPreprocessor(verbose=self.verbose)
         if load_path is None:
@@ -189,7 +206,12 @@ class Preprocessor:
         column_names : ColumnNamesType
             One or number of columns in the dataframe.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = IQRPreprocessor(verbose=self.verbose)
         if load_path is None:
@@ -215,7 +237,12 @@ class Preprocessor:
         column_names : ColumnNamesType
             One or number of columns in the dataframe.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = BoxCoxTransformer()
         if load_path is None:
@@ -239,7 +266,12 @@ class Preprocessor:
         column_names : ColumnNamesType
             One or number of columns in the dataframe.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = LogTransformer()
         if load_path is None:
@@ -271,7 +303,12 @@ class Preprocessor:
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = Cuped(self.dataframe, target, verbose=self.verbose)
         if load_path is None:
@@ -303,7 +340,12 @@ class Preprocessor:
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         load_path : Path, optional
-            Path to a json file with parameters.
+            Path to json file with parameters.
+
+        Returns
+        -------
+        self : Preprocessor
+            Instance object
         """
         transformer = MultiCuped(self.dataframe, target, verbose=self.verbose)
         if load_path is None:

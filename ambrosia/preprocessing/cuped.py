@@ -398,7 +398,7 @@ class MultiCuped(AbstractVarianceReducer):
 
     def fit(self, covariate_columns: types.ColumnNamesType) -> None:
         """
-        Fit to calculate Multi CUPED parameters for target column using given
+        Fit to calculate Multi CUPED parameters for target column using selected
         covariate columns.
 
         Parameters
