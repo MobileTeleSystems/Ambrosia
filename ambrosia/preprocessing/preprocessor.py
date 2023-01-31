@@ -29,7 +29,8 @@ import pandas as pd
 from ambrosia import types
 from ambrosia.preprocessing.aggregate import AggregatePreprocessor
 from ambrosia.preprocessing.cuped import Cuped, MultiCuped
-from ambrosia.preprocessing.robust import BoxCoxTransformer, IQRPreprocessor, LogTransformer, RobustPreprocessor
+from ambrosia.preprocessing.robust import IQRPreprocessor, RobustPreprocessor
+from ambrosia.preprocessing.transformers import BoxCoxTransformer, LogTransformer
 
 
 class Preprocessor:
