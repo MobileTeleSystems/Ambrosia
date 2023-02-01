@@ -37,7 +37,7 @@ import ambrosia.tools.bin_intervals as bin_pkg
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABMetaClass, ABToolAbstract, SimpleDesigner
 
-from .handlers import EmpiricHandler, TheoryHandler, calc_prob_control_class
+from .handlers import EmpiricHandler, TheoryHandler, calc_prob_control_class, BinaryDesignHandler
 
 SIZE: str = "size"
 EFFECT: str = "effect"
@@ -320,15 +320,13 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             if label == SIZE:
                 kwargs["delta_relative_values"] = args[EFFECT]
                 kwargs["second_errors"] = args["beta"]
-                result[metric_name] = bin_pkg.get_table_sample_size_on_effect(**kwargs)
             elif label == EFFECT:
                 kwargs["second_errors"] = args["beta"]
                 kwargs["sample_sizes"] = args[SIZE]
-                result[metric_name] = bin_pkg.get_table_effect_on_sample_size(**kwargs)
             elif label == POWER:
                 kwargs["delta_relative_values"] = args[EFFECT]
                 kwargs["sample_sizes"] = args[SIZE]
-                result[metric_name] = bin_pkg.get_table_power_on_size_and_delta(**kwargs)
+            result[metric_name] = Designer.__dataframe_handler(BinaryDesignHandler(), label, **kwargs)
         if len(args["metric"]) == 1:
             return result[args["metric"][0]]
         else:
@@ -563,13 +561,11 @@ def design_binary_size(
         first_type_errors = [first_type_errors]
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
-    return bin_pkg.get_table_sample_size_on_effect(
-        p_a=prob_a,
-        first_errors=first_type_errors,
-        second_errors=second_type_errors,
-        delta_relative_values=effects,
-        **kwargs,
-    )
+    return BinaryDesignHandler().size_design(p_a=prob_a,
+                                             first_errors=first_type_errors,
+                                             second_errors=second_type_errors,
+                                             delta_relative_values=effects,
+                                             **kwargs)
 
 
 def design_binary_effect(
@@ -609,9 +605,11 @@ def design_binary_effect(
         first_type_errors = [first_type_errors]
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
-    return bin_pkg.get_table_effect_on_sample_size(
-        p_a=prob_a, sample_sizes=sizes, first_errors=first_type_errors, second_errors=second_type_errors, **kwargs
-    )
+    return BinaryDesignHandler().effect_design(p_a=prob_a,
+                                               first_errors=first_type_errors,
+                                               second_errors=second_type_errors,
+                                               sample_sizes=sizes,
+                                               **kwargs)
 
 
 def design_binary_power(
@@ -649,9 +647,11 @@ def design_binary_power(
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
-    return bin_pkg.get_table_power_on_size_and_delta(
-        p_a=prob_a, sample_sizes=sizes, confidence_level=1 - first_type_errors, delta_relative_values=effects, **kwargs
-    )
+    return BinaryDesignHandler().power_design(p_a=prob_a,
+                                              first_errors=first_type_errors,
+                                              delta_relative_values=effects,
+                                              sample_sizes=sizes,
+                                              **kwargs)
 
 
 def design_binary(

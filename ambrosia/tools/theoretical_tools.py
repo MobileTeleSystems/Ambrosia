@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -27,6 +27,13 @@ SECOND_TYPE_ERROR: float = 0.2
 EFFECT_DEFAULT: float = 1.01
 ROUND_DIGITS_TABLE: int = 3
 ROUND_DIGITS_PERCENT: int = 1
+
+
+def make_labels_effects(effects: Iterable[float]) -> List[float]:
+    '''
+    Make row names in table from float effects
+    '''
+    return [f"{np.round((eff - 1) * 100, ROUND_DIGITS_PERCENT)}%" for eff in effects]
 
 
 def get_stats(values: Iterable[float], ddof: int = 1) -> Tuple[float, float]:
@@ -130,7 +137,7 @@ def get_power(mean: float, std: float, sample_size: int, effect: float, alpha: f
     return 1 - second_error
 
 
-def get_table_sample_size(mean, std, effects, first_errors, second_errors):
+def get_table_sample_size(mean, std, effects, first_errors, second_errors, effects_labels=None):
     """
     Create table of sample sizes for different effects and errors.
 
@@ -149,12 +156,18 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors):
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
+    effects_labels : List
+        Labels for effects in table
 
     Returns
     -------
     df_results : pandas df
         Table with minimal sample sizes for each effect and error from input data.
     """
+    
+    first_errors = np.round(first_errors, ROUND_DIGITS_TABLE)
+    second_errors = np.round(second_errors, ROUND_DIGITS_TABLE)
+
     multiindex = pd.MultiIndex.from_tuples([(eff,) for eff in effects], names=["effect"])
     multicols = pd.MultiIndex.from_tuples(
         [(f"({err_one}; {err_two})",) for err_one in first_errors for err_two in second_errors], names=["errors"]
@@ -168,8 +181,13 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors):
                 df_results.loc[(eff,), (err,)] = get_sample_size(
                     mean=mean, std=std, eff=eff, alpha=first_err, beta=second_err
                 )
+    
+    if effects_labels is None:
+        levels = [[f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in effects]]
+    else:
+        levels = [effects_labels]
     df_results.index = pd.MultiIndex(
-        levels=[[f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in effects]],
+        levels=levels,
         codes=[np.arange(len(effects))],
         names=["effects"],
     )
@@ -315,6 +333,7 @@ def get_power_table(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
+    effects_labels: Optional[Iterable[str]] = None
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.
@@ -336,13 +355,18 @@ def get_power_table(
         e.x.: [0.01, 0.05, 0.1]
     as_numeric: bool, default False
         Whether to return a number or a string with percentages
+    effects_labels : List
+        Labels for effects in table
 
     Returns
     -------
     df_results : pandas df
         Table with  sample sizes for each effect and error from input data.
     """
-    effects_str = [str(round((effect - 1) * 100, ROUND_DIGITS_PERCENT)) + "%" for effect in effects]
+    if effects_labels is None:
+        effects_str = [str(round((effect - 1) * 100, ROUND_DIGITS_PERCENT)) + "%" for effect in effects]
+    else:
+        effects_str = effects_labels
     multiindex = pd.MultiIndex.from_tuples(
         [(first_error, effect_str) for first_error in first_errors for effect_str in effects_str],
         names=["First type error", "Effect"],

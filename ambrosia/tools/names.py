@@ -12,5 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+class designer_methods:
+    THEORY: str = "theory"
+    EMPIRIC: str = "empiric"
+    BINARY: str = "binary"
 
-from .names import bin_theory_names, designer_methods
+
+class bin_theory_names:
+    ASIN_VAR_STABIL: str = "asin_var_stabil"

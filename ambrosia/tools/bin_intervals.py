@@ -452,7 +452,7 @@ def get_table_power_on_size_and_delta(
     delta_values: Iterable[float] = None,
     delta_relative_values: Iterable[float] = None,
     amount: int = 10000,
-    confidence_level: float = 0.95,
+    first_errors: float = 0.05,
 ) -> pd.DataFrame:
     """
     Table with power / empirical 1 type error = 1 - coverage for fixed size and effect.
@@ -471,8 +471,8 @@ def get_table_power_on_size_and_delta(
         Relative delta values: delta_relative * p_a = p_b
     amount : int, default : ``10000``
         Amount of generated samples for one n(trials amount), to estimate power
-    confidence_level : float, default : ``0.95``
-        Such value x, that: Pr ( delta in I ) >= x
+    first_errors : floa], default : ``0.05``
+        First type error
 
     Returns
     -------
@@ -499,7 +499,7 @@ def get_table_power_on_size_and_delta(
             "b_success": sample_b,
             "a_trials": trials,
             "b_trials": trials,
-            "confidence_level": confidence_level,
+            "confidence_level": 1 - first_errors,
         }
         conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
         power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
@@ -512,7 +512,7 @@ def get_table_power_on_size_and_delta(
     table_title: str = r"$1 - \beta$: power of criterion, " + (
         r"$p_a-p_b=\Delta$" if delta_values else r"$p_a\delta=p_b$"
     )
-    table = table.style.set_caption(table_title)
+    table = table.applymap(lambda x: f"{x * 100:.2f} %")
     return table
 
 
@@ -654,7 +654,7 @@ def get_table_effect_on_sample_size(
     sample_sizes: Iterable[int] = (100,),
     p_a: float = 0.5,
     amount: int = 10000,
-    delta_type: str = "absolute",
+    delta_type: str = "relative",
 ) -> pd.DataFrame:
     """
     Table for effects with given sample sizes and erros.

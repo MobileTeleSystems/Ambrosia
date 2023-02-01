@@ -156,7 +156,12 @@ def test_design_binary_function(to_design, effects, sizes, beta):
     Design binary function smoke test
     """
     pa: float = 0.3
-    design_binary(to_design=to_design, prob_a=pa, sizes=sizes, effects=effects, second_type_errors=beta)
+    if to_design == "effects":
+        design_binary(to_design=to_design, prob_a=pa, sizes=sizes, second_type_errors=beta)
+    elif to_design == "sizes":
+        design_binary(to_design=to_design, prob_a=pa, effects=effects, second_type_errors=beta)
+    elif to_design == "beta":
+        design_binary(to_design=to_design, prob_a=pa, sizes=sizes, effects=effects)
 
 
 @pytest.mark.unit

@@ -26,16 +26,20 @@ from typing import List
 import pandas as pd
 import pyspark.sql.functions as spark_functions
 
-import ambrosia.spark_tools.empiric as empiric_spark
-import ambrosia.spark_tools.theory as theory_spark
-import ambrosia.tools.theoretical_tools as theory_pkg
-import ambrosia.tools.tools as empiric_pkg
 from ambrosia import types
+import ambrosia.tools.tools as empiric_pkg
+import ambrosia.tools.bin_intervals as bin_pkg
+import ambrosia.spark_tools.theory as theory_spark
+import ambrosia.spark_tools.empiric as empiric_spark
+import ambrosia.tools.theoretical_tools as theory_pkg
 from ambrosia.tools.ab_abstract_component import SimpleDesigner
+from ambrosia.tools.theoretical_binary import TheoreticalBinary
+
 
 DATA: str = "dataframe"
 AVAILABLE: List[str] = ["pandas", "spark"]
 AVAILABLE_TABLES_ERROR = TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
+THEORY_METHOD: str = "theory_method"
 
 
 class TheoryHandler(SimpleDesigner):
@@ -98,3 +102,34 @@ def calc_prob_control_class(table: types.PassedDataType, metric: types.MetricNam
             warnings.warn(warning_message_values)
         p_a = table.select(spark_functions.mean(metric)).collect()[0][0]
     return p_a
+
+
+class BinaryDesignHandler(SimpleDesigner):
+    '''
+    Handle method used in binary metrics design
+    We can use theoretical transformations from tools.theoretical_binary
+    or confidence_interval from tools.bin_intervals
+
+    query -> Designer ---(got binary)--> HandlerWhatToDesign -> BinaryDesignHandler (Bin CI / theory)
+
+    '''
+
+    def _get_solver_theory(self, **kwargs):
+        solver = bin_pkg
+        if THEORY_METHOD in kwargs:
+            method = kwargs[THEORY_METHOD]
+            del kwargs[THEORY_METHOD]
+            solver = TheoreticalBinary.METHODS[method]()
+        return solver, kwargs
+
+    def size_design(self, **kwargs) -> pd.DataFrame:
+        solver, kwargs = self._get_solver_theory(**kwargs)
+        return solver.get_table_sample_size_on_effect(**kwargs)
+
+    def effect_design(self, **kwargs) -> pd.DataFrame:
+        solver, kwargs = self._get_solver_theory(**kwargs)
+        return solver.get_table_effect_on_sample_size(**kwargs)
+
+    def power_design(self, **kwargs) -> pd.DataFrame:
+        solver, kwargs = self._get_solver_theory(**kwargs)
+        return solver.get_table_power_on_size_and_delta(**kwargs)
