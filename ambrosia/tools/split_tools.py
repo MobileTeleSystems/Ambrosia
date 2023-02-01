@@ -40,7 +40,7 @@ def check_ids_duplicates(
     """
     Check if column with objects ids contains duplicates.
     """
-    indices: np.ndarray = dataframe.id_column.values if id_column is not None else dataframe.index
+    indices: np.ndarray = dataframe[id_column].values if id_column is not None else dataframe.index
     if len(indices) > len(set(indices)):
         raise ValueError(f"Id column {id_column} contains duplicates, ids must be unique for split")
 
