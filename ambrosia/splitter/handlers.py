@@ -53,7 +53,7 @@ def add_data_pandas(dataframe: pd.DataFrame, splitted_dataframe: pd.DataFrame, g
     customized_table : pd.DataFrame
         Table, where rest of table is added.
     """
-    additional_table: pd.DataFrame = dataframe.iloc[dataframe.index.delete(splitted_dataframe.index)].copy()
+    additional_table: pd.DataFrame = dataframe.loc[dataframe.index.delete(splitted_dataframe.index)].copy()
     additional_table[GROUPS_COLUMN] = group_label
     customized_table = pd.concat([splitted_dataframe, additional_table])
     return customized_table
@@ -157,6 +157,15 @@ def split_data_handler(**kwargs) -> types.SplitterResult:
     """
     Call split function according to table type.
     """
+    if isinstance(kwargs[DATA], pd.DataFrame):
+        return split_pandas.get_split(**kwargs)
+    elif isinstance(kwargs[DATA], types.SparkDataFrame):
+        return split_spark.get_split(**kwargs)
+    else:
+        raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
+
+
+def duplicates_handler(**kwargs):
     if isinstance(kwargs[DATA], pd.DataFrame):
         return split_pandas.get_split(**kwargs)
     elif isinstance(kwargs[DATA], types.SparkDataFrame):
