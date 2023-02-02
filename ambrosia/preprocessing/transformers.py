@@ -130,7 +130,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         Returns
         -------
         self : object
-            Fitted Transformer
+            Instance object.
         """
         self.column_names = self._wrap_cols(column_names)
         self._check_cols(dataframe, self.column_names)
@@ -301,7 +301,7 @@ class LogTransformer(AbstractFittableTransformer):
         Returns
         -------
         self : object
-            Fitted Transformer
+            Instance object.
         """
         self.column_names = self._wrap_cols(column_names)
         self._check_cols(dataframe, self.column_names)

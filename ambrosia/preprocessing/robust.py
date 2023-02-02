@@ -179,7 +179,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
         Returns
         -------
         self : object
-            Fitted Preprocessor
+            Instance object.
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_cols(dataframe, self.params["column_names"])
@@ -378,7 +378,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         Returns
         -------
         self : object
-            Fitted Preprocessor
+            Instance object.
         """
         self.params["column_names"] = self._wrap_cols(column_names)
         self._check_cols(dataframe, self.params["column_names"])

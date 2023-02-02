@@ -71,8 +71,14 @@ class Preprocessor:
     aggregate(groupby_columns, categorial_method, real_method, agg_params,
               real_cols, categorial_cols)
         Aggreagate data by columns.
-    robust(column_name, alpha=0.05)
-        Make a robust transformation.
+    robust(column_names, alpha=0.05)
+        Make a robust preprocessing of data.
+    iqr(column_names, alpha=0.05)
+        Make an IQR preprocessing of data.
+    boxcox(column_names, alpha=0.05)
+        Make a Box-Cox transformation.
+    log(column_names, alpha=0.05)
+        Make a log transformation.
     transformations()
         Returns a list of transformations.
     """
@@ -111,6 +117,7 @@ class Preprocessor:
         agg_params: Optional[Dict] = None,
         real_cols: Optional[types.ColumnNamesType] = None,
         categorial_cols: Optional[types.ColumnNamesType] = None,
+        load_path: Optional[Path] = None,
     ) -> Preprocessor:
         """
         Make an aggregation of the data frame.
@@ -142,13 +149,13 @@ class Preprocessor:
             Instance object
         """
         transformer = AggregatePreprocessor(categorial_method, real_method)
-        self.dataframe = transformer.run(
-            self.dataframe,
-            groupby_columns,
-            agg_params,
-            real_cols,
-            categorial_cols,
-        )
+        if load_path is None:
+            self.dataframe = transformer.fit_transform(
+                self.dataframe, groupby_columns, agg_params, real_cols, categorial_cols
+            )
+        else:
+            transformer.load_params(load_path)
+            self.dataframe = transformer.transform(self.dataframe)
         self.transformers.append(transformer)
         return self
 
