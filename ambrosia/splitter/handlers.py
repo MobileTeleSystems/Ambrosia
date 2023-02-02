@@ -163,12 +163,3 @@ def split_data_handler(**kwargs) -> types.SplitterResult:
         return split_spark.get_split(**kwargs)
     else:
         raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
-
-
-def duplicates_handler(**kwargs):
-    if isinstance(kwargs[DATA], pd.DataFrame):
-        return split_pandas.get_split(**kwargs)
-    elif isinstance(kwargs[DATA], types.SparkDataFrame):
-        return split_spark.get_split(**kwargs)
-    else:
-        raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
