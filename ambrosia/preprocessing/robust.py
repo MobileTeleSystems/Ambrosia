@@ -182,7 +182,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
             Fitted Preprocessor
         """
         self.params["column_names"] = self._wrap_cols(column_names)
-        self._check_columns(dataframe, self.params["column_names"])
+        self._check_cols(dataframe, self.params["column_names"])
         self.params["alpha"] = self.__wrap_alpha(alpha)
         self.params["tail"] = self.__check_tail(tail)
         self.__calculate_quantiles(dataframe)
@@ -208,7 +208,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.params["column_names"])
+        self._check_cols(dataframe, self.params["column_names"])
         if self.verbose:
             prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
 
@@ -381,7 +381,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
             Fitted Preprocessor
         """
         self.params["column_names"] = self._wrap_cols(column_names)
-        self._check_columns(dataframe, self.params["column_names"])
+        self._check_cols(dataframe, self.params["column_names"])
         self.__calculate_params(dataframe)
         self.fitted = True
         return self
@@ -405,7 +405,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.params["column_names"])
+        self._check_cols(dataframe, self.params["column_names"])
         if self.verbose:
             prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
 

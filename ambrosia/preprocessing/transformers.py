@@ -133,7 +133,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
             Fitted Transformer
         """
         self.column_names = self._wrap_cols(column_names)
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         self.__calculate_lambda_(dataframe)
         self.fitted = True
         return self
@@ -156,7 +156,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         X: np.ndarray = transformed[self.column_names].values
         for num in range(len(self.column_names)):
@@ -213,7 +213,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         X_tr: np.ndarray = transformed[self.column_names].values
         for num in range(len(self.column_names)):
@@ -304,7 +304,7 @@ class LogTransformer(AbstractFittableTransformer):
             Fitted Transformer
         """
         self.column_names = self._wrap_cols(column_names)
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         self.fitted = True
         return self
 
@@ -326,7 +326,7 @@ class LogTransformer(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         if (transformed[self.column_names] > 0).all(axis=None):
             transformed[self.column_names] = np.log(transformed[self.column_names].values)
@@ -381,7 +381,7 @@ class LogTransformer(AbstractFittableTransformer):
             Transformed dataframe or None
         """
         self._check_fitted()
-        self._check_columns(dataframe, self.column_names)
+        self._check_cols(dataframe, self.column_names)
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         transformed[self.column_names] = np.exp(transformed[self.column_names].values)
         return None if inplace else transformed

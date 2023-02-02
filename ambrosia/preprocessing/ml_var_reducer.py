@@ -242,7 +242,7 @@ class MLVarianceReducer(AbstractVarianceReducer):
         covariate_columns: ColumnNamesType
             Columns which will be used for the transformation.
         """
-        self._check_columns(self.df, covariate_columns)
+        self._check_cols(self.df, covariate_columns)
         self.model.fit(self.df[covariate_columns].values, self.df[self.target_column].values)
         self.bias = np.mean(self.model.predict(self.df[covariate_columns].values))
         self.fitted = True
@@ -268,7 +268,7 @@ class MLVarianceReducer(AbstractVarianceReducer):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns(self.df, covariate_columns)
+        self._check_cols(self.df, covariate_columns)
         self._check_fitted()
         prediction: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
         new_target: np.ndarray = prediction + np.mean(self.df[self.target_column]) - np.mean(prediction)
