@@ -19,8 +19,8 @@ from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 
-from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
 from ambrosia import types
+from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
 
 
 class AggregatePreprocessor(AbstractFittableTransformer):
@@ -92,8 +92,8 @@ class AggregatePreprocessor(AbstractFittableTransformer):
         return agg_params
 
     def __init__(self, categorial_method: types.MethodType = "mode", real_method: types.MethodType = "sum"):
-        self.categorial_method = self.__transform_agg_param(categorial_method)
-        self.real_method = self.__transform_agg_param(real_method)
+        self.categorial_method = categorial_method
+        self.real_method = real_method
         self.agg_params = None
         self.groupby_columns = None
         super().__init__()
@@ -209,7 +209,7 @@ class AggregatePreprocessor(AbstractFittableTransformer):
             self.__empty_args_step(agg_params, real_cols, categorial_cols)
         self._check_cols(dataframe, agg_params.keys())
         self.groupby_columns = groupby_columns
-        self.agg_params = agg_params
+        self.agg_params = copy.deepcopy(agg_params)
         self.fitted = True
         return self
 
