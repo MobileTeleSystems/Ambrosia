@@ -127,16 +127,16 @@ class AbstractFittableTransformer(ABC):
         if not self.fitted:
             raise RuntimeError("Call fit method !!!")
 
-    def _check_columns(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
+    def _check_cols(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
         for column in columns:
             if column not in dataframe:
                 raise ValueError(f"Column {column} is not in Data Frame columns list")
 
     @staticmethod
-    def _wrap_cols(var: Union[types.ColumnNameType, types.ColumnNamesType]):
-        if isinstance(var, types.ColumnNameType):
-            var = [var]
-        return var
+    def _wrap_cols(cols: types.ColumnNamesType) -> types.ColumnNamesType:
+        if isinstance(cols, types.ColumnNameType):
+            cols = [cols]
+        return cols
 
     def store_params(self, store_path: Path) -> None:
         """
