@@ -26,15 +26,14 @@ from typing import List
 import pandas as pd
 import pyspark.sql.functions as spark_functions
 
-from ambrosia import types
-import ambrosia.tools.tools as empiric_pkg
-import ambrosia.tools.bin_intervals as bin_pkg
-import ambrosia.spark_tools.theory as theory_spark
 import ambrosia.spark_tools.empiric as empiric_spark
+import ambrosia.spark_tools.theory as theory_spark
+import ambrosia.tools.bin_intervals as bin_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
+import ambrosia.tools.tools as empiric_pkg
+from ambrosia import types
 from ambrosia.tools.ab_abstract_component import SimpleDesigner
 from ambrosia.tools.theoretical_binary import TheoreticalBinary
-
 
 DATA: str = "dataframe"
 AVAILABLE: List[str] = ["pandas", "spark"]
@@ -105,14 +104,14 @@ def calc_prob_control_class(table: types.PassedDataType, metric: types.MetricNam
 
 
 class BinaryDesignHandler(SimpleDesigner):
-    '''
+    """
     Handle method used in binary metrics design
     We can use theoretical transformations from tools.theoretical_binary
     or confidence_interval from tools.bin_intervals
 
     query -> Designer ---(got binary)--> HandlerWhatToDesign -> BinaryDesignHandler (Bin CI / theory)
 
-    '''
+    """
 
     def _get_solver_theory(self, **kwargs):
         solver = bin_pkg

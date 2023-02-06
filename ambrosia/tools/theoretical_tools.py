@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Iterable, List, Tuple, Optional
+from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -30,9 +30,9 @@ ROUND_DIGITS_PERCENT: int = 1
 
 
 def make_labels_effects(effects: Iterable[float]) -> List[float]:
-    '''
+    """
     Make row names in table from float effects
-    '''
+    """
     return [f"{np.round((eff - 1) * 100, ROUND_DIGITS_PERCENT)}%" for eff in effects]
 
 
@@ -164,7 +164,7 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors, effec
     df_results : pandas df
         Table with minimal sample sizes for each effect and error from input data.
     """
-    
+
     first_errors = np.round(first_errors, ROUND_DIGITS_TABLE)
     second_errors = np.round(second_errors, ROUND_DIGITS_TABLE)
 
@@ -181,7 +181,7 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors, effec
                 df_results.loc[(eff,), (err,)] = get_sample_size(
                     mean=mean, std=std, eff=eff, alpha=first_err, beta=second_err
                 )
-    
+
     if effects_labels is None:
         levels = [[f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in effects]]
     else:
@@ -333,7 +333,7 @@ def get_power_table(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
-    effects_labels: Optional[Iterable[str]] = None
+    effects_labels: Optional[Iterable[str]] = None,
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.

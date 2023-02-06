@@ -18,20 +18,23 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
+from ambrosia.tools.constants import FIRST_TYPE_ERROR, SECOND_TYPE_ERROR
 from ambrosia.tools.theoretical_tools import (
-    get_table_sample_size, make_labels_effects, get_minimal_effects_table,
+    get_minimal_effects_table,
     get_power_table,
+    get_table_sample_size,
+    make_labels_effects,
 )
 
 
 class TheoreticalBinary(ABC):
-    '''
+    """
     Base class for theoretical methods for binary methods
     To get corresponding solver for given method
         >>> solver = TheoreticalBinary.METHODS[method]()
     All inheritors must implement methods
         >>> [get_table_sample_size_on_effect, get_table_effect_on_sample_size, get_table_power_on_size_and_delta]
-    '''
+    """
 
     METHODS = {}
 
@@ -40,12 +43,14 @@ class TheoreticalBinary(ABC):
         TheoreticalBinary.METHODS[cls._method_name] = cls
 
     @abstractmethod
-    def get_table_sample_size_on_effect(self, 
-                      p_a: float,
-                      second_errors: tp.Iterable[float],
-                      first_errors: tp.Iterable[float],
-                      delta_relative_values: tp.Iterable[float]) -> pd.DataFrame:
-        '''
+    def get_table_sample_size_on_effect(
+        self,
+        p_a: float,
+        delta_relative_values: tp.Iterable[float],
+        second_errors: tp.Iterable[float],
+        first_errors: tp.Iterable[float],
+    ) -> pd.DataFrame:
+        """
         Return table with sizes designed for experiment
 
         Parameters
@@ -66,16 +71,18 @@ class TheoreticalBinary(ABC):
         -------
         df_results: Pandas Dataframe
             Table with minimal sample sizes for each effect and error from input data.
-        '''
+        """
         pass
 
     @abstractmethod
-    def get_table_effect_on_sample_size(self,
-                        p_a: float,
-                        sample_sizes: tp.Iterable[int],
-                        second_errors: tp.Iterable[float],
-                        first_errors: tp.Iterable[float]) -> pd.DataFrame:
-        '''
+    def get_table_effect_on_sample_size(
+        self,
+        p_a: float,
+        sample_sizes: tp.Iterable[int],
+        second_errors: tp.Iterable[float],
+        first_errors: tp.Iterable[float],
+    ) -> pd.DataFrame:
+        """
         Return table with effects designed for experiment
 
         Parameters
@@ -96,16 +103,18 @@ class TheoreticalBinary(ABC):
         -------
         df_results: Pandas Dataframe
             Table with minimal effects for each sample size and error from input data.
-        '''
+        """
         pass
 
     @abstractmethod
-    def get_table_power_on_size_and_delta(self,
-                       p_a: float,
-                       sample_sizes: tp.Iterable[int],
-                       delta_relative_values: tp.Iterable[float],
-                       first_errors: tp.Iterable[float]) -> pd.DataFrame:
-        '''
+    def get_table_power_on_size_and_delta(
+        self,
+        p_a: float,
+        sample_sizes: tp.Iterable[int],
+        delta_relative_values: tp.Iterable[float],
+        first_errors: tp.Iterable[float],
+    ) -> pd.DataFrame:
+        """
         Return table with powers designed for experiment
 
         Parameters
@@ -126,12 +135,23 @@ class TheoreticalBinary(ABC):
         -------
         df_results: Pandas Dataframe
             Table with power for each sample size, first type error and effects from input data.
-        '''
+        """
         pass
 
 
-
 class TheoreticalVariationStabilization(TheoreticalBinary):
+    """
+    This is implementation for variance stabilization
+    https://en.wikipedia.org/wiki/Variance-stabilizing_transformation
+    This is implementation for arcsin transformation.
+
+    For more information checkout paper
+    https://dornsife.usc.edu/assets/sites/1185/docs/others/VarianceStabilizationP-B-Nb.pdf
+
+    Variance after transformation will be ~ 1
+
+    Functions `_transform` and `_reverse` implement transformation and it's inverse
+    """
 
     _method_name: str = "asin_var_stabil"
 
@@ -156,49 +176,61 @@ class TheoreticalVariationStabilization(TheoreticalBinary):
         effects_asin = 1 + (self._transform(p_a) - self._transform(p_b)) / self._transform(p_a)
         return effects_asin
 
-    def get_table_sample_size_on_effect(self,
-                      p_a: float,
-                      second_errors: tp.Iterable[float],
-                      first_errors: tp.Iterable[float],
-                      delta_relative_values: tp.Iterable[float]) -> pd.DataFrame:
+    def get_table_sample_size_on_effect(
+        self,
+        p_a: float,
+        delta_relative_values: tp.Iterable[float],
+        second_errors: tp.Iterable[float] = (SECOND_TYPE_ERROR,),
+        first_errors: tp.Iterable[float] = (FIRST_TYPE_ERROR,),
+    ) -> pd.DataFrame:
         effects_asin = self._recalc_asin_effects(p_a, delta_relative_values)
         labels = make_labels_effects(delta_relative_values)
-        size = get_table_sample_size(self._transform(p_a),
-                                     std=1,
-                                     effects=effects_asin,
-                                     first_errors=first_errors,
-                                     second_errors=np.array(second_errors),
-                                     effects_labels=labels)
+        size = get_table_sample_size(
+            self._transform(p_a),
+            std=1,
+            effects=effects_asin,
+            first_errors=first_errors,
+            second_errors=np.array(second_errors),
+            effects_labels=labels,
+        )
         return size
 
-    def get_table_effect_on_sample_size(self,
-                        p_a: float,
-                        sample_sizes: tp.Iterable[int],
-                        second_errors: tp.Iterable[float],
-                        first_errors: tp.Iterable[float]) -> pd.DataFrame:
-        effects = get_minimal_effects_table(self._transform(p_a),
-                                            std=1,
-                                            sample_sizes=sample_sizes,
-                                            first_errors=first_errors,
-                                            second_errors=np.array(second_errors),
-                                            as_numeric=True)
+    def get_table_effect_on_sample_size(
+        self,
+        p_a: float,
+        sample_sizes: tp.Iterable[int],
+        second_errors: tp.Iterable[float] = (FIRST_TYPE_ERROR,),
+        first_errors: tp.Iterable[float] = (SECOND_TYPE_ERROR,),
+    ) -> pd.DataFrame:
+        effects = get_minimal_effects_table(
+            self._transform(p_a),
+            std=1,
+            sample_sizes=sample_sizes,
+            first_errors=first_errors,
+            second_errors=np.array(second_errors),
+            as_numeric=True,
+        )
         effects = self._reverse_effect(effects, p_a)
         return effects
 
-    def get_table_power_on_size_and_delta(self,
-                       p_a: float,
-                       sample_sizes: tp.Iterable[int],
-                       delta_relative_values: tp.Iterable[float],
-                       first_errors: tp.Iterable[float]) -> pd.DataFrame:        
+    def get_table_power_on_size_and_delta(
+        self,
+        p_a: float,
+        sample_sizes: tp.Iterable[int],
+        delta_relative_values: tp.Iterable[float],
+        first_errors: tp.Iterable[float] = (FIRST_TYPE_ERROR,),
+    ) -> pd.DataFrame:
         if isinstance(first_errors, float):
             first_errors = [first_errors]
 
         effects_asin = self._recalc_asin_effects(p_a, delta_relative_values)
         labels = make_labels_effects(delta_relative_values)
-        powers = get_power_table(self._transform(p_a),
-                                 std=1,
-                                 sample_sizes=sample_sizes,
-                                 first_errors=first_errors,
-                                 effects=effects_asin,
-                                 effects_labels=labels)
+        powers = get_power_table(
+            self._transform(p_a),
+            std=1,
+            sample_sizes=sample_sizes,
+            first_errors=first_errors,
+            effects=effects_asin,
+            effects_labels=labels,
+        )
         return powers

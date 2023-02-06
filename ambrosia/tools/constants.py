@@ -1,0 +1,2 @@
+FIRST_TYPE_ERROR: float = 0.05
+SECOND_TYPE_ERROR: float = 0.2

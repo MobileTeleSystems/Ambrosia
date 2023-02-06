@@ -12,10 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
 class designer_methods:
     THEORY: str = "theory"
     EMPIRIC: str = "empiric"
     BINARY: str = "binary"
+
+
+class designable_params:
+    SIZE: str = "size"
+    EFFECT: str = "effect"
+    POWER: str = "power"
 
 
 class bin_theory_names:

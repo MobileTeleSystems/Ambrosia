@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from ambrosia.designer import Designer, design, design_binary
+from ambrosia.tools.names import bin_theory_names, designable_params, designer_methods
 
 
 @pytest.mark.smoke
@@ -207,3 +208,48 @@ def test_not_available_dataframe():
     with pytest.raises(TypeError) as error:
         Designer(dataframe=2, metrics="abc", effects=1.2).run("size", "theory")
     assert str(error.value).startswith("Type of table must be one of")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "method, metric",
+    [
+        (designer_methods.BINARY, "retention"),
+        (designer_methods.THEORY, "retention"),
+        (designer_methods.THEORY, "LTV"),
+        (designer_methods.EMPIRIC, "LTV"),
+    ],
+)
+def test_more_alpha_less_size(designer_ltv, method, metric):
+    """
+    This test was added because argument first error was missed in designer binary method
+    """
+    results = []
+    for alpha in (0.2, 0.4, 0.6):
+        results.append(
+            designer_ltv.run(
+                to_design=designable_params.SIZE, method=method, metrics=metric, first_type_errors=alpha, effects=1.2
+            ).iloc[0, 0]
+        )
+    res02, res04, res06 = results
+    assert res02 > res04
+    assert res04 > res06
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("effects", [1.01, 1.05, 1.1])
+def test_binary_asin_var_stabel(designer_ltv, effects):
+    result_asin = designer_ltv.run(
+        designable_params.SIZE,
+        designer_methods.BINARY,
+        metrics="retention",
+        effects=effects,
+        theory_method=bin_theory_names.ASIN_VAR_STABIL,
+    ).iloc[0, 0]
+
+    result_monte_carlo = designer_ltv.run(
+        designable_params.SIZE, designer_methods.BINARY, metrics="retention", effects=effects
+    ).iloc[0, 0]
+
+    assert result_monte_carlo < result_asin * 2
+    assert result_asin < result_monte_carlo * 2

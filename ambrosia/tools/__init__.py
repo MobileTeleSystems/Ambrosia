@@ -13,4 +13,4 @@
 #  limitations under the License.
 
 
-from .names import bin_theory_names, designer_methods
+from .names import bin_theory_names, designable_params, designer_methods
