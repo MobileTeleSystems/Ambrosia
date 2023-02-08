@@ -34,9 +34,10 @@ import pandas as pd
 import yaml
 
 import ambrosia.tools.bin_intervals as bin_pkg
+import ambrosia.tools.theoretical_tools as theory_pkg
+
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABMetaClass, ABToolAbstract, SimpleDesigner
-
 from .handlers import EmpiricHandler, TheoryHandler, calc_prob_control_class
 
 SIZE: str = "size"
@@ -531,6 +532,10 @@ def design_binary_size(
     effects: types.EffectType,
     first_type_errors: types.StatErrorType = (0.05,),
     second_type_errors: types.StatErrorType = (0.2,),
+    method: str = 'theory',
+    groups_ratio: float = 1.0,
+    alternative: str = 'two-sided',
+    stabilizing_method: str = 'asin',
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -549,6 +554,14 @@ def design_binary_size(
     second_type_errors : StatErrorType, default: ``(0.2,)``
        II type error bounds
        P (suppose equality for different groups) < beta.
+    method: str
+        TBD
+    groups_ratio: float
+        TBD
+    alternative: str
+        TBD
+    stabilizing_method: str
+        TBD
     **kwargs : Dict
         Other keyword arguments.
 
@@ -563,12 +576,24 @@ def design_binary_size(
         first_type_errors = [first_type_errors]
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
+    if method == 'theory':
+        return theory_pkg.get_table_sample_size(
+            mean=prob_a,
+            std=None,
+            effects=effects,
+            first_errors=first_type_errors,
+            second_errors=second_type_errors,
+            target_type='binary',
+            groups_ratio=groups_ratio,
+            alternative=alternative,
+            stabilizing_method=stabilizing_method
+        )
     return bin_pkg.get_table_sample_size_on_effect(
         p_a=prob_a,
         first_errors=first_type_errors,
         second_errors=second_type_errors,
         delta_relative_values=effects,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -577,6 +602,10 @@ def design_binary_effect(
     sizes: types.SampleSizeType,
     first_type_errors: types.StatErrorType = (0.05,),
     second_type_errors: types.StatErrorType = (0.2,),
+    method: str = 'theory',
+    groups_ratio: float = 1.0,
+    alternative: str = 'two-sided',
+    stabilizing_method: str = 'asin',
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -609,8 +638,24 @@ def design_binary_effect(
         first_type_errors = [first_type_errors]
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
+    if method == 'theory':
+        return theory_pkg.get_minimal_effects_table(
+            mean=prob_a,
+            std=None,
+            sample_sizes=sizes,
+            first_errors=first_type_errors,
+            second_errors=second_type_errors,
+            target_type='binary',
+            groups_ratio=groups_ratio,
+            alternative=alternative,
+            stabilizing_method=stabilizing_method
+        )
     return bin_pkg.get_table_effect_on_sample_size(
-        p_a=prob_a, sample_sizes=sizes, first_errors=first_type_errors, second_errors=second_type_errors, **kwargs
+        p_a=prob_a,
+        sample_sizes=sizes,
+        first_errors=first_type_errors,
+        second_errors=second_type_errors,
+        **kwargs
     )
 
 
@@ -619,6 +664,10 @@ def design_binary_power(
     sizes: types.SampleSizeType,
     effects: types.EffectType,
     first_type_errors: types.StatErrorType = 0.05,
+    method: str = 'theory',
+    groups_ratio: float = 1.0,
+    alternative: str = 'two-sided',
+    stabilizing_method: str = 'asin',
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -649,6 +698,18 @@ def design_binary_power(
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
+    if method == 'theory':
+        return theory_pkg.get_power_table(
+            mean=prob_a,
+            std=None,
+            sample_sizes=sizes,
+            effects=effects,
+            first_errors=(first_type_errors, ),
+            target_type='binary',
+            groups_ratio=groups_ratio,
+            alternative=alternative,
+            stabilizing_method=stabilizing_method
+        )
     return bin_pkg.get_table_power_on_size_and_delta(
         p_a=prob_a, sample_sizes=sizes, confidence_level=1 - first_type_errors, delta_relative_values=effects, **kwargs
     )
@@ -661,6 +722,10 @@ def design_binary(
     effects: Optional[types.EffectType] = None,
     first_type_errors: types.StatErrorType = 0.05,
     second_type_errors: types.StatErrorType = (0.2,),
+    method: str = 'theory',
+    groups_ratio: float = 1.0,
+    alternative: str ='two-sided',
+    stabilizing_method:str ='asin',
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -693,10 +758,16 @@ def design_binary(
         Table with results of design.
     """
     if to_design == SIZE:
-        return design_binary_size(prob_a, effects, first_type_errors, second_type_errors, **kwargs)
+        return design_binary_size(
+            prob_a, effects, first_type_errors, second_type_errors, method,
+            groups_ratio, alternative, stabilizing_method, **kwargs)
     elif to_design == EFFECT:
-        return design_binary_effect(prob_a, sizes, first_type_errors, second_type_errors, **kwargs)
+        return design_binary_effect(
+            prob_a, sizes, first_type_errors, second_type_errors, method,
+            groups_ratio, alternative, stabilizing_method, **kwargs)
     elif to_design == POWER:
-        return design_binary_power(prob_a, sizes, effects, first_type_errors, **kwargs)
+        return design_binary_power(
+            prob_a, sizes, effects, first_type_errors, method,
+            groups_ratio, alternative, stabilizing_method, **kwargs)
     else:
         raise ValueError(f"Only {SIZE}, {EFFECT} and {POWER} parameters of the binary experiment could be designed.")
