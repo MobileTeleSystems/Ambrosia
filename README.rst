@@ -3,7 +3,7 @@
 Ambrosia
 ========
 
-|PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions|
+|PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions| |Telegram Channel|
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/ambrosia
     :target: https://pypi.org/project/ambrosia
@@ -19,6 +19,8 @@ Ambrosia
     :target: https://github.com/psf/black
 .. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrosia.svg
     :target: https://pypi.org/project/ambrosia  
+.. |Telegram Channel| image:: https://img.shields.io/badge/telegram-Ambrosia-blueviolet.svg?logo=telegram
+    :target: https://t.me/+Tkt43TNUUSAxNWNi
 
 .. shields end
 
