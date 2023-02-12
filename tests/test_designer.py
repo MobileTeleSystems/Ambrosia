@@ -151,12 +151,24 @@ def test_design_function(ltv_and_retention_dataset, designer_ltv):
 @pytest.mark.parametrize("effects", [1.05, [1.01, 1.05]])
 @pytest.mark.parametrize("sizes", [200, [100, 200]])
 @pytest.mark.parametrize("beta", [0.2, [0.1, 0.2]])
-def test_design_binary_function(to_design, effects, sizes, beta):
+@pytest.mark.parametrize("method", ["theory", "binary"])
+@pytest.mark.parametrize("groups_ratio", [1.0, 1.5, 2.0, 5.0])
+@pytest.mark.parametrize("alternative", ["two-sided", "larger"])
+def test_design_binary_function(to_design, effects, sizes, beta, method, groups_ratio, alternative):
     """
     Design binary function smoke test
     """
     pa: float = 0.3
-    design_binary(to_design=to_design, prob_a=pa, sizes=sizes, effects=effects, second_type_errors=beta)
+    design_binary(
+        to_design=to_design,
+        prob_a=pa,
+        sizes=sizes,
+        effects=effects,
+        second_type_errors=beta,
+        method=method,
+        groups_ratio=groups_ratio,
+        alternative=alternative
+    )
 
 
 @pytest.mark.unit
@@ -192,7 +204,12 @@ def test_empiric_spark(param_to_design, designer):
     Check empiric design for spark works
     """
     result = designer.run(
-        param_to_design, "empiric", second_type_errors=0.5, effects=1.5, sizes=150, as_numeric=True
+        param_to_design,
+        "empiric",
+        second_type_errors=0.5,
+        effects=1.5,
+        sizes=150,
+        as_numeric=True
     ).iloc[0, 0]
     assert result > 0
 

@@ -52,6 +52,7 @@ scipy = "^1.6.3"
 tqdm = "^4.27.0"
 hyperopt = "^0.2.7"
 catboost = "^1.0.4"
+statsmodels = ">=0.13.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "1.6.0"
@@ -69,7 +70,7 @@ line-length = 120
 target-version = ['py37', 'py38', 'py39', 'py310']
 include = '\.pyi?$'
 exclude = '''
- 
+
 (
   /(
       \.eggs         # exclude a few common directories in the

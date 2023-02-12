@@ -27,7 +27,8 @@ def get_stats_from_table(dataframe: types.SparkDataFrame, column: types.ColumnNa
     Get table for designing samples size for experiment.
     """
     stats = dataframe.select(
-        funcs.mean(funcs.col(column)).alias("mean"), funcs.stddev(funcs.col(column)).alias("std")
+        funcs.mean(funcs.col(column)).alias("mean"),
+        funcs.stddev(funcs.col(column)).alias("std")
     ).collect()
     mean = stats[0]["mean"]
     std = stats[0]["std"]
@@ -148,7 +149,9 @@ def design_power(
 
 
 def ttest_spark(
-    first_group: types.SparkDataFrame, second_group: types.SparkDataFrame, column: types.ColumnNameType
+    first_group: types.SparkDataFrame,
+    second_group: types.SparkDataFrame,
+    column: types.ColumnNameType
 ) -> Tuple[float, float]:
     """
     T-test for independent groups.
