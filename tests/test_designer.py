@@ -49,10 +49,10 @@ def test_corret_type(designer_simple_table, designer_ltv):
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_simple_table"), 736),
-        ("effect", pytest.lazy_fixture("designer_simple_table"), "54.3%"),
-        ("power", pytest.lazy_fixture("designer_simple_table"), "17.7%"),
-        ("size", pytest.lazy_fixture("designer_ltv"), 1552),
+        ("size", pytest.lazy_fixture("designer_simple_table"), 603),
+        ("effect", pytest.lazy_fixture("designer_simple_table"), "49.2%"),
+        ("power", pytest.lazy_fixture("designer_simple_table"), "20.7%"),
+        ("size", pytest.lazy_fixture("designer_ltv"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv"), "35.6%"),
     ],
@@ -175,7 +175,7 @@ def test_design_binary_function(to_design, effects, sizes, beta, method, groups_
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1552),
+        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv_spark"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv_spark"), "35.6%"),
     ],

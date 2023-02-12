@@ -35,9 +35,9 @@ import yaml
 
 import ambrosia.tools.bin_intervals as bin_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
-
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABMetaClass, ABToolAbstract, SimpleDesigner
+
 from .handlers import EmpiricHandler, TheoryHandler, calc_prob_control_class
 
 SIZE: str = "size"

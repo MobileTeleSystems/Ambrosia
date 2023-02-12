@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from math import asin
 from typing import Iterable, List, Tuple
 
 import numpy as np
@@ -19,7 +20,6 @@ import pandas as pd
 import scipy.stats as sps
 import statsmodels.stats as stats
 import statsmodels.stats.api as sms
-from math import asin
 from scipy.stats import norm
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
