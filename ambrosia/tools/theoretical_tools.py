@@ -49,53 +49,45 @@ def check_target_type(
     """
     unique_vals_count = dataframe[column].nunique()
     if unique_vals_count > 2:
-        return 'non-binary'
+        return "non-binary"
     unique_vals = set(dataframe[column].unique())
     if unique_vals == {0, 1} or unique_vals in {0, 1}:
-        return 'binary'
-    return 'non-binary'
+        return "binary"
+    return "non-binary"
 
 
 def stabilize_effect(
-    eff: float,
-    mean: float,
-    std: float,
-    target_type: str='binary',
-    stabilizing_method: str='asin'
+    eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
 ):
     """Evaluate stabilized effect for solve_power method."""
-    if target_type == 'non-binary':
+    if target_type == "non-binary":
         return (eff - 1) * mean / std
-    elif target_type == 'binary':
-        if stabilizing_method == 'asin':
-            return 2 * (asin((mean * eff)**0.5) - asin(mean**0.5))
-        elif stabilizing_method == 'norm':
-            return mean * (eff - 1) / ((mean * (1 - mean))**0.5)
+    elif target_type == "binary":
+        if stabilizing_method == "asin":
+            return 2 * (asin((mean * eff) ** 0.5) - asin(mean**0.5))
+        elif stabilizing_method == "norm":
+            return mean * (eff - 1) / ((mean * (1 - mean)) ** 0.5)
         else:
-            raise Exception('Invalid stabilizing_method')
+            raise Exception("Invalid stabilizing_method")
     else:
-        raise Exception('Invalid target_type')
+        raise Exception("Invalid target_type")
 
 
 def destabilize_effect(
-    eff:float,
-    mean:float,
-    std:float,
-    target_type: str='binary',
-    stabilizing_method: str='asin'
+    eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
 ):
     """Evaluate destabilized effect from solve_power method (statsmodels)."""
-    if target_type == 'non-binary':
+    if target_type == "non-binary":
         return eff * std / mean
-    elif target_type == 'binary':
-        if stabilizing_method == 'asin':
-            return np.sin((eff + 2 * asin(mean ** 0.5)) / 2) ** 2 / mean - 1
-        elif stabilizing_method == 'norm':
+    elif target_type == "binary":
+        if stabilizing_method == "asin":
+            return np.sin((eff + 2 * asin(mean**0.5)) / 2) ** 2 / mean - 1
+        elif stabilizing_method == "norm":
             return eff * (mean * (1 - mean)) ** 0.5 / mean
         else:
-            raise Exception('Invalid stabilizing_method')
+            raise Exception("Invalid stabilizing_method")
     else:
-        raise Exception('Invalid target_type')
+        raise Exception("Invalid target_type")
 
 
 def get_sample_size(
@@ -104,10 +96,10 @@ def get_sample_size(
     eff=EFFECT_DEFAULT,
     alpha=FIRST_TYPE_ERROR,
     beta=SECOND_TYPE_ERROR,
-    target_type='non-binary',
+    target_type="non-binary",
     groups_ratio=1.0,
-    alternative='two-sided',
-    stabilizing_method='asin'
+    alternative="two-sided",
+    stabilizing_method="asin",
 ):
     """
     Calculate minimum sample size to catch effect with fixed errors.
@@ -143,17 +135,9 @@ def get_sample_size(
         Minimal sample size
 
     """
-    power_class = (
-        stats.power.TTestIndPower()
-        if target_type == 'non-binary' else
-        stats.power.NormalIndPower()
-    )
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_effect = stabilize_effect(
-        eff=eff,
-        mean=mean,
-        std=std,
-        target_type=target_type,
-        stabilizing_method=stabilizing_method
+        eff=eff, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
     )
     sample_size = power_class.solve_power(
         effect_size=stabilized_effect,
@@ -161,7 +145,7 @@ def get_sample_size(
         alpha=alpha,
         power=1 - beta,
         ratio=groups_ratio,
-        alternative=alternative
+        alternative=alternative,
     )
     return int(np.ceil(sample_size))
 
@@ -172,10 +156,10 @@ def get_minimal_determinable_effect(
     sample_size,
     alpha=FIRST_TYPE_ERROR,
     beta=SECOND_TYPE_ERROR,
-    target_type='non-binary',
+    target_type="non-binary",
     groups_ratio=1.0,
-    alternative='two-sided',
-    stabilizing_method='asin'
+    alternative="two-sided",
+    stabilizing_method="asin",
 ):
     """
     Calculate power for given minimum detectable effect and group size.
@@ -211,18 +195,9 @@ def get_minimal_determinable_effect(
         Minimal effect which we can find
 
     """
-    power_class = (
-        stats.power.TTestIndPower()
-        if target_type == 'non-binary' else
-        stats.power.NormalIndPower()
-    )
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_mde = power_class.solve_power(
-        effect_size=None,
-        nobs1=sample_size,
-        alpha=alpha,
-        power=1 - beta,
-        ratio=groups_ratio,
-        alternative=alternative
+        effect_size=None, nobs1=sample_size, alpha=alpha, power=1 - beta, ratio=groups_ratio, alternative=alternative
     )
     mde = destabilize_effect(stabilized_mde, mean, std, target_type, stabilizing_method)
     return mde
@@ -234,10 +209,10 @@ def get_power(
     sample_size: int,
     effect: float,
     alpha: float = FIRST_TYPE_ERROR,
-    target_type='non-binary',
+    target_type="non-binary",
     groups_ratio=1.0,
-    alternative='two-sided',
-    stabilizing_method='asin'
+    alternative="two-sided",
+    stabilizing_method="asin",
 ) -> float:
     """
     Calculate minimum detectable effect which we can find.
@@ -272,17 +247,9 @@ def get_power(
     power : float
         Power effect with fixed size and effect
     """
-    power_class = (
-        stats.power.TTestIndPower()
-        if target_type == 'non-binary' else
-        stats.power.NormalIndPower()
-    )
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_effect = stabilize_effect(
-        eff=effect,
-        mean=mean,
-        std=std,
-        target_type=target_type,
-        stabilizing_method=stabilizing_method
+        eff=effect, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
     )
     power = power_class.solve_power(
         effect_size=stabilized_effect,
@@ -290,7 +257,7 @@ def get_power(
         alpha=alpha,
         power=None,
         ratio=groups_ratio,
-        alternative=alternative
+        alternative=alternative,
     )
     return power
 
@@ -301,10 +268,10 @@ def get_table_sample_size(
     effects: types.EffectType,
     first_errors: types.StatErrorType = (0.05,),
     second_errors: types.StatErrorType = (0.2,),
-    target_type: str = 'non-binary',
+    target_type: str = "non-binary",
     groups_ratio: float = 1.0,
-    alternative: str = 'two-sided',
-    stabilizing_method: str = 'asin'
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ):
     """
     Create table of sample sizes for different effects and errors.
@@ -342,13 +309,9 @@ def get_table_sample_size(
     df_results : pandas df
         Table with minimal sample sizes for each effect and error from input data.
     """
-    multiindex = pd.MultiIndex.from_tuples(
-        [(eff,) for eff in effects],
-        names=["effect"]
-    )
+    multiindex = pd.MultiIndex.from_tuples([(eff,) for eff in effects], names=["effect"])
     multicols = pd.MultiIndex.from_tuples(
-        [(f"({err_one}; {err_two})",) for err_one in first_errors for err_two in second_errors],
-        names=["errors"]
+        [(f"({err_one}; {err_two})",) for err_one in first_errors for err_two in second_errors], names=["errors"]
     )
     df_results = pd.DataFrame(index=multiindex, columns=multicols)
 
@@ -365,7 +328,7 @@ def get_table_sample_size(
                     target_type=target_type,
                     groups_ratio=groups_ratio,
                     alternative=alternative,
-                    stabilizing_method=stabilizing_method
+                    stabilizing_method=stabilizing_method,
                 )
     df_results.index = pd.MultiIndex(
         levels=[[f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in effects]],
@@ -381,9 +344,9 @@ def design_groups_size(
     effects: Iterable[float],
     first_errors: Iterable[float],
     second_errors: Iterable[float],
-    groups_ratio: float=1.0,
-    alternative: str='two-sided',
-    stabilizing_method: str='asin'
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Get table for designing samples size for experiment.
@@ -422,8 +385,7 @@ def design_groups_size(
     target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
     return get_table_sample_size(
-        mean, std, effects, first_errors, second_errors,
-        target_type, groups_ratio, alternative, stabilizing_method
+        mean, std, effects, first_errors, second_errors, target_type, groups_ratio, alternative, stabilizing_method
     )
 
 
@@ -434,10 +396,10 @@ def get_minimal_effects_table(
     first_errors: Iterable[float],
     second_errors: Iterable[float],
     as_numeric: bool = False,
-    target_type: str='non-binary',
-    groups_ratio: float=1.0,
-    alternative: str='two-sided',
-    stabilizing_method: str='asin'
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of effects for different sample sizes and errors.
@@ -495,7 +457,7 @@ def get_minimal_effects_table(
                     target_type=target_type,
                     groups_ratio=groups_ratio,
                     alternative=alternative,
-                    stabilizing_method=stabilizing_method
+                    stabilizing_method=stabilizing_method,
                 )
                 str_effect = str(np.round(effect * 100, ROUND_DIGITS_PERCENT)) + "%"
                 if as_numeric:
@@ -516,10 +478,10 @@ def design_effect(
     sample_sizes: Iterable[int],
     first_errors: Iterable[float],
     second_errors: Iterable[float],
-    as_numeric: bool=False,
-    groups_ratio: float=1.0,
-    alternative: str='two-sided',
-    stabilizing_method: str='asin'
+    as_numeric: bool = False,
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of effects for different sample sizes and errors.
@@ -560,8 +522,16 @@ def design_effect(
     target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
     return get_minimal_effects_table(
-        mean, std, sample_sizes, first_errors, second_errors, as_numeric,
-        target_type, groups_ratio, alternative, stabilizing_method
+        mean,
+        std,
+        sample_sizes,
+        first_errors,
+        second_errors,
+        as_numeric,
+        target_type,
+        groups_ratio,
+        alternative,
+        stabilizing_method,
     )
 
 
@@ -572,10 +542,10 @@ def get_power_table(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
-    target_type: str='non-binary',
-    groups_ratio: float=1.0,
-    alternative: str='two-sided',
-    stabilizing_method: str='asin'
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.
@@ -632,7 +602,7 @@ def get_power_table(
                 target_type=target_type,
                 groups_ratio=groups_ratio,
                 alternative=alternative,
-                stabilizing_method=stabilizing_method
+                stabilizing_method=stabilizing_method,
             )
             if as_numeric:
                 power = [np.round(p, ROUND_DIGITS_TABLE) for p in power]
@@ -656,9 +626,9 @@ def design_power(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
-    groups_ratio: float=1.0,
-    alternative: str='two-sided',
-    stabilizing_method: str='asin'
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.
@@ -699,8 +669,16 @@ def design_power(
     target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
     return get_power_table(
-        mean, std, sample_sizes, effects, first_errors, as_numeric,
-        target_type, groups_ratio, alternative, stabilizing_method
+        mean,
+        std,
+        sample_sizes,
+        effects,
+        first_errors,
+        as_numeric,
+        target_type,
+        groups_ratio,
+        alternative,
+        stabilizing_method,
     )
 
 
@@ -727,10 +705,9 @@ def get_ttest_info(group_a: np.ndarray, group_b: np.ndarray, alpha: np.ndarray) 
     variance_group_a: float = group_a.var(ddof=1)
     variance_group_b: float = group_b.var(ddof=1)
     compound_se: float = np.sqrt(variance_group_a / len(group_a) + variance_group_b / len(group_b))
-    denominator: float = (
-        (variance_group_a / len(group_a)) ** 2 / (len(group_a) - 1) +
-        (variance_group_b / len(group_b)) ** 2 / (len(group_b) - 1)
-    )
+    denominator: float = (variance_group_a / len(group_a)) ** 2 / (len(group_a) - 1) + (
+        variance_group_b / len(group_b)
+    ) ** 2 / (len(group_b) - 1)
     dim: float = compound_se**2 / denominator
     quantiles: np.ndarray = sps.t.ppf(1 - alpha / 2, df=dim)
     return quantiles, compound_se

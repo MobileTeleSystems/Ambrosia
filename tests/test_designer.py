@@ -167,7 +167,7 @@ def test_design_binary_function(to_design, effects, sizes, beta, method, groups_
         second_type_errors=beta,
         method=method,
         groups_ratio=groups_ratio,
-        alternative=alternative
+        alternative=alternative,
     )
 
 
@@ -204,12 +204,7 @@ def test_empiric_spark(param_to_design, designer):
     Check empiric design for spark works
     """
     result = designer.run(
-        param_to_design,
-        "empiric",
-        second_type_errors=0.5,
-        effects=1.5,
-        sizes=150,
-        as_numeric=True
+        param_to_design, "empiric", second_type_errors=0.5, effects=1.5, sizes=150, as_numeric=True
     ).iloc[0, 0]
     assert result > 0
 
