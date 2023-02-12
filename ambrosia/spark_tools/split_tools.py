@@ -110,6 +110,7 @@ def add_to_required_size(
     required_sizes: List[int] = [groups_size - size_ for size_ in current_sizes]
     total_required: int = sum(required_sizes)
     not_used_ids = not_used_ids.limit(total_required)
+
     # Now it's linear search, probably there will be not so many groups
     def udf_make_labels_with_find(row_number: int):
         current_total: int = 0
