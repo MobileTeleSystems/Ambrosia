@@ -16,7 +16,7 @@ import json
 from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -83,7 +83,24 @@ class ABToolAbstract(ABC):
 class AbstractFittableTransformer(ABC):
     """
     Abstract class for fittable transformer.
+
+    Attributes
+    ----------
+    fitted : bool
+        Indicator for the fit status of transformer.
     """
+
+    def __init__(self):
+        self.fitted: bool = False
+
+    def _check_fitted(self) -> None:
+        if not self.fitted:
+            raise RuntimeError("Call fit method before!")
+
+    def _check_cols(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
+        for column in columns:
+            if column not in dataframe:
+                raise ValueError(f"Column {column} is not in Data Frame columns list")
 
     @abstractmethod
     def get_params_dict(self) -> Dict:
@@ -120,24 +137,6 @@ class AbstractFittableTransformer(ABC):
         Fit class parameters on some data and transform it.
         """
 
-    def __init__(self):
-        self.fitted: bool = False
-
-    def _check_fitted(self) -> None:
-        if not self.fitted:
-            raise RuntimeError("Call fit method !!!")
-
-    def _check_cols(self, dataframe: pd.DataFrame, columns: types.ColumnNameType) -> None:
-        for column in columns:
-            if column not in dataframe:
-                raise ValueError(f"Column {column} is not in Data Frame columns list")
-
-    @staticmethod
-    def _wrap_cols(cols: types.ColumnNamesType) -> types.ColumnNamesType:
-        if isinstance(cols, types.ColumnNameType):
-            cols = [cols]
-        return cols
-
     def store_params(self, store_path: Path) -> None:
         """
         Parameters
@@ -164,14 +163,25 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
     """
     Abstract class for Variance Reduction.
 
+    Parameters
+    ----------
+    verbose : bool, default: ``True``
+        If ``True`` will print in sys.stdout the information
+        about the variance reduction.
+
     Attributes
     ----------
-    df : pd.DataFrame
-        Given data frame with target column
-    target_column : str
-        Column from df, must be str type, it matches Y (Y => Y_hat)
-    cov : pd.DataFrame
-        Covariance matrix of given data frame
+    params : Dict
+        Parameters of the VarianceReducer that will be updated after
+        calling ``fit`` method.
+        These parameters are sufficient for data frames transformations
+        and are used when loading and saving methods of instance are called.
+        By the default these params dictionary contains  ``'target_column'``
+        and ``'transformed_name'`` keys.
+    verbose : bool
+        Verbose info flag.
+    fitted : bool
+        Indicator for the fit status of transformer.
     """
 
     EPSILON: float = 1e-5
@@ -187,25 +197,24 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
             y_hat = y - transformation(X) + MEAN(transformation(X))
         """
 
-    def __init__(self, dataframe: pd.DataFrame, target_column: types.ColumnNameType, verbose: bool = True) -> None:
-        self.df = dataframe
-        if target_column not in dataframe.columns:
-            raise ValueError(f"Target column {target_column} is not in Data Frame columns list")
-        self.target_column = target_column
+    def __init__(self, verbose: bool = True) -> None:
+        self.params = {"target_column": None, "transformed_name": None}
         self.verbose: bool = verbose
         super().__init__()
 
     def _return_result(
-        self, new_target: np.ndarray, inplace: bool, name: Union[types.ColumnNameType, None]
+        self, dataframe: pd.DataFrame, new_target: np.ndarray, inplace: bool
     ) -> Union[pd.DataFrame, None]:
-        if name is None:
-            name = self.target_column + "_transformed"
-        if inplace:
-            self.df.loc[:, name] = new_target
-            return None
-        new_df: pd.DataFrame = self.df.copy()
-        new_df.loc[:, name] = new_target
-        return new_df
+        """
+        Prepare and return resulted data frame with transformed target column.
+        """
+        if self.params["transformed_name"] is None:
+            name = self.params["target_column"] + "_transformed"
+        else:
+            name = self.params["transformed_name"]
+        df: pd.DataFrame = dataframe if inplace else dataframe.copy()
+        df.loc[:, name] = new_target
+        return df
 
     def _verbose(self, old_variance: float, new_variance: float) -> None:
         """
@@ -214,12 +223,6 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
         part_of_variance: float = new_variance / (old_variance + AbstractVarianceReducer.EPSILON)
         log.info_log(f"After transformation {self}, the variance is {(part_of_variance * 100):.4f} % of the original")
         log.info_log(f"Variance transformation {old_variance:.4f} ===> {new_variance:.4f}")
-
-    @abstractmethod
-    def transform(
-        self, covariate_columns: List[types.ColumnNameType], inplace: bool = False, name: Optional[str] = None
-    ) -> None:
-        pass
 
 
 class DataframeHandler:

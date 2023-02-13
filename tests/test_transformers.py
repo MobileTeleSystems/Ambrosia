@@ -40,7 +40,7 @@ def test_boxcox(column_names, transf_name, data_nonlin_var, robust_moments):
     col_mean: float = transformed_data[column_names].mean()
     col_std: float = transformed_data[column_names].std()
     moments: np.ndarray = robust_moments.loc[transf_name].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.001)
 
 
 @pytest.mark.unit
@@ -48,17 +48,16 @@ def test_boxcox_load_store(data_nonlin_var, robust_moments):
     """
     Test BoxCoxTransformer save and load methods.
     """
-    store_path = STORAGE_PATHS["boxcox"]
     boxcox = BoxCoxTransformer()
     boxcox.fit(data_nonlin_var, ["feature_2", "feature_1"])
-    boxcox.store_params(store_path)
+    boxcox.store_params(STORAGE_PATHS["boxcox"])
     loaded_boxcox = BoxCoxTransformer()
-    loaded_boxcox.load_params(store_path)
-    os.remove(store_path)
+    loaded_boxcox.load_params(STORAGE_PATHS["boxcox"])
+    os.remove(STORAGE_PATHS["boxcox"])
     transformed_data = loaded_boxcox.transform(data_nonlin_var, inplace=False)
     col_mean, col_std = transformed_data["feature_2"].mean(), transformed_data["feature_2"].std()
     moments: np.ndarray = robust_moments.loc["boxcox_feature_2"].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.001)
 
 
 @pytest.mark.unit
@@ -78,7 +77,7 @@ def test_boxcox_inverse(column_names, data_nonlin_var):
     robust.fit(data_nonlin_var, column_names)
     transformed_data = robust.transform(data_nonlin_var, inplace=False)
     transformed_data = robust.inverse_transform(transformed_data, inplace=False)
-    assert np.isclose(transformed_data.values, data_nonlin_var.values, atol=0.000001).all()
+    assert np.allclose(transformed_data.values, data_nonlin_var.values, atol=0.000001)
 
 
 @pytest.mark.smoke
@@ -109,7 +108,7 @@ def test_logarithm(column_names, transf_name, data_nonlin_var, robust_moments):
     col_mean: float = transformed_data[column_names].mean()
     col_std: float = transformed_data[column_names].std()
     moments: np.ndarray = robust_moments.loc[transf_name].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.00001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.00001)
 
 
 @pytest.mark.unit
@@ -117,17 +116,16 @@ def test_logarithm_load_store(data_nonlin_var, robust_moments):
     """
     Test LogTransformer save and load methods.
     """
-    store_path = STORAGE_PATHS["logarithm"]
     log = LogTransformer()
     log.fit(data_nonlin_var, ["feature_2", "feature_1"])
-    log.store_params(store_path)
+    log.store_params(STORAGE_PATHS["logarithm"])
     loaded_log = LogTransformer()
-    loaded_log.load_params(store_path)
-    os.remove(store_path)
+    loaded_log.load_params(STORAGE_PATHS["logarithm"])
+    os.remove(STORAGE_PATHS["logarithm"])
     transformed_data = loaded_log.transform(data_nonlin_var, inplace=False)
     col_mean, col_std = transformed_data["feature_2"].mean(), transformed_data["feature_2"].std()
     moments: np.ndarray = robust_moments.loc["log_feature_2"].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.001)
 
 
 @pytest.mark.unit
@@ -147,4 +145,4 @@ def test_logarithm_inverse(column_names, data_nonlin_var):
     robust.fit(data_nonlin_var, column_names)
     transformed_data = robust.transform(data_nonlin_var, inplace=False)
     transformed_data = robust.inverse_transform(transformed_data, inplace=False)
-    assert np.isclose(transformed_data.values, data_nonlin_var.values, atol=0.000001).all()
+    assert np.allclose(transformed_data.values, data_nonlin_var.values, atol=0.000001)

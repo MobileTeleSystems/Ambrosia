@@ -24,6 +24,7 @@ import scipy.stats as sps
 
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
+from ambrosia.tools.back_tools import wrap_cols
 
 
 class BoxCoxTransformer(AbstractFittableTransformer):
@@ -132,7 +133,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
         self : object
             Instance object.
         """
-        self.column_names = self._wrap_cols(column_names)
+        self.column_names = wrap_cols(column_names)
         self._check_cols(dataframe, self.column_names)
         self.__calculate_lambda_(dataframe)
         self.fitted = True
@@ -303,7 +304,7 @@ class LogTransformer(AbstractFittableTransformer):
         self : object
             Instance object.
         """
-        self.column_names = self._wrap_cols(column_names)
+        self.column_names = wrap_cols(column_names)
         self._check_cols(dataframe, self.column_names)
         self.fitted = True
         return self
