@@ -29,7 +29,7 @@ EMPTY_VALUE: int = 0
 
 def unite_spark_tables(*dataframes: types.SparkDataFrame) -> types.SparkDataFrame:
     """
-    Union all spark dataframes
+    Union all spark dataframes.
     """
     amount_of_dataframes = len(dataframes)
     if not amount_of_dataframes:
@@ -47,7 +47,8 @@ def add_hash_column(
     salt: Optional[str] = None,
 ) -> types.SparkDataFrame:
     """
-    Returns new dataframe with column hashing id_column
+    Returns new dataframe with column hashing id_column.
+
     Parameters
     ----------
     hash_function: str, default ``sha_256``
@@ -78,7 +79,7 @@ def get_hash_split(
     salt: Optional[str] = None,
 ) -> types.SparkDataFrame:
     """
-    Hash split
+    Hash split.
     """
     hashed_dataframe = add_hash_column(dataframe, id_column, hash_function, salt)
     hashed_dataframe = hashed_dataframe.orderBy(HASH_COLUMN_NAME).limit(groups_number * groups_size)
@@ -104,7 +105,7 @@ def add_to_required_size(
     labels: Iterable[str],
 ) -> types.SparkDataFrame:
     """
-    Add elements for groups to required size
+    Add elements for groups to required size.
     """
     not_used_ids: types.SparkDataFrame = dataframe.join(used_dataframe, on=id_column, how="leftanti")
     required_sizes: List[int] = [groups_size - size_ for size_ in current_sizes]
@@ -145,12 +146,15 @@ def get_split(
     labels: Optional[Iterable[str]] = None,
 ) -> types.SparkDataFrame:
     """
-    Get split
+    Get split.
     """
     total_size: int = dataframe.count()
 
     if groups_number * groups_size > total_size:
         raise ValueError("Total sample size is more, than shape of table")
+
+    if total_size > dataframe.dropDuplicates([id_column]).count():
+        raise ValueError(f"Id column {id_column} contains duplicates, ids must be unique for split")
 
     if labels is None:
         labels = split_tools.make_labels_for_groups(groups_number)
