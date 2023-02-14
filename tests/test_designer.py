@@ -202,3 +202,29 @@ def test_not_available_dataframe():
     with pytest.raises(TypeError) as error:
         Designer(dataframe=2, metrics="abc", effects=1.2).run("size", "theory")
     assert str(error.value).startswith("Type of table must be one of")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "method, metric",
+    [
+        ("binary", "retention"),
+        ("theory", "retention"),
+        ("theory", "LTV"),
+        ("empiric", "LTV"),
+    ],
+)
+def test_more_alpha_less_size(designer_ltv, method, metric):
+    """
+    This test was added because argument first error was missed in designer binary method
+    """
+    results = []
+    for alpha in (0.2, 0.4, 0.6):
+        results.append(
+            designer_ltv.run(
+                to_design="size", method=method, metrics=metric, first_type_errors=alpha, effects=1.2
+            ).iloc[0, 0]
+        )
+    res02, res04, res06 = results
+    assert res02 > res04
+    assert res04 > res06

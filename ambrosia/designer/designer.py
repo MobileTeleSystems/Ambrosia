@@ -315,6 +315,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         Designing an experiment, using the approach for binary metrics.
         """
         result: types.DesignerResult = {}
+        kwargs["first_errors"] = np.array(args["alpha"])
         for metric_name in args["metric"]:
             kwargs["p_a"] = calc_prob_control_class(args["df"], metric_name)
             if label == SIZE:
