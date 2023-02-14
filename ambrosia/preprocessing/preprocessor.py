@@ -36,16 +36,6 @@ from ambrosia.preprocessing.cuped import Cuped, MultiCuped
 from ambrosia.preprocessing.robust import IQRPreprocessor, RobustPreprocessor
 from ambrosia.preprocessing.transformers import BoxCoxTransformer, LogTransformer
 
-TRANSFORMATIONS = {
-    "AggregatePreprocessor": AggregatePreprocessor,
-    "Cuped": Cuped,
-    "MultiCuped": MultiCuped,
-    "IQRPreprocessor": IQRPreprocessor,
-    "RobustPreprocessor": RobustPreprocessor,
-    "BoxCoxTransformer": BoxCoxTransformer,
-    "LogTransformer": LogTransformer,
-}
-
 
 class Preprocessor:
     """
@@ -63,7 +53,7 @@ class Preprocessor:
     ----------
     dataframe : pd.DataFrame
         Table with data for transformations.
-    transformers: List of transformations
+    transformers : List of transformations
         List of transformation that have been called before.
     verbose : bool
         Verbose info flag.
