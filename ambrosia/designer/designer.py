@@ -721,7 +721,7 @@ def design_binary_power(
     prob_a: float,
     sizes: types.SampleSizeType,
     effects: types.EffectType,
-    first_type_errors: types.StatErrorType = 0.05,
+    first_type_errors: types.StatErrorType = (0.05,),
     method: str = "theory",
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
@@ -741,7 +741,7 @@ def design_binary_power(
     effects : EffectType
         List or single value of relative effects.
         For example: ``1.05``, ``[1.05, 1.2]``.
-    first_type_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``(0.05,)``
        I type error bounds
        P (detect difference for equal) < alpha.
     method: str, default: ``"theory"``
@@ -801,7 +801,7 @@ def design_binary(
     prob_a: float,
     sizes: Optional[types.SampleSizeType] = None,
     effects: Optional[types.EffectType] = None,
-    first_type_errors: types.StatErrorType = 0.05,
+    first_type_errors: types.StatErrorType = (0.05,),
     second_type_errors: types.StatErrorType = (0.2,),
     method: str = "theory",
     groups_ratio: float = 1.0,
@@ -824,7 +824,7 @@ def design_binary(
     effects : EffectType, optional
         List of single value of relative effects.
         For example: 1.05, [1.05, 1.2].
-    first_type_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``(0.05, )``
         I type error bounds
         P (detect difference for equal) < alpha.
     second_type_errors : StatErrorType, default: ``(0.2,)``
