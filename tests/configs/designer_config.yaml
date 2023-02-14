@@ -1,0 +1,8 @@
+!designer
+effects:
+    - 1.1
+sizes:
+    - 500
+    - 1000
+method: theory
+metrics: LTV

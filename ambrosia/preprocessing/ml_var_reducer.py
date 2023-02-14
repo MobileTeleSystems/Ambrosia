@@ -28,10 +28,10 @@ from sklearn.metrics import mean_squared_error
 
 from ambrosia import types
 from ambrosia.tools import log
-from ambrosia.tools.ab_abstract_component import AbstractVarianceReduction
+from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
 
 
-class MLVarianceReducer(AbstractVarianceReduction):
+class MLVarianceReducer(AbstractVarianceReducer):
     """
     Machine Learning approach for variance reduction.
 
@@ -117,6 +117,35 @@ class MLVarianceReducer(AbstractVarianceReduction):
         else:
             self.score = {"MSE": mean_squared_error}
 
+    def get_params_dict(self) -> Dict:
+        """
+        Returns a dictionary with params.
+        """
+        self._check_fitted()
+        return {
+            "model": self.model,
+            "train_bias": self.bias,
+        }
+
+    def load_params_dict(self, params: Dict) -> None:
+        """
+        Load instance parameters from the dictionary.
+
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with params.
+        """
+        if "model" in params:
+            self.model = params["model"]
+        else:
+            raise TypeError(f"params argument must contain: {'model'}")
+        if "lambda_" in params:
+            self.bias = np.array(params["train_bias"])
+        else:
+            raise TypeError(f"params argument must contain: {'train_bias'}")
+        self.fitted = True
+
     def store_params(self, store_path: Path) -> None:
         """
         Store params of model as a json file, available only for CatBoost
@@ -149,13 +178,13 @@ class MLVarianceReducer(AbstractVarianceReduction):
         load_path: Path
             Path to a json file with model parameters.
         """
-        self.fitted = True
         if not isinstance(self.model, CatBoostRegressor):
             raise ValueError("Model cant be load from the file, set it via instance.model = ...")
         self.model.load_model(load_path, format="json")
         with open(load_path, "r+") as file:
             data = json.load(file)
             self.bias = data["train_bias"]
+        self.fitted = True
 
     def __create_model(self) -> None:
         if not isinstance(self.model, str):
@@ -213,7 +242,7 @@ class MLVarianceReducer(AbstractVarianceReduction):
         covariate_columns: ColumnNamesType
             Columns which will be used for the transformation.
         """
-        self._check_columns(covariate_columns)
+        self._check_cols(self.df, covariate_columns)
         self.model.fit(self.df[covariate_columns].values, self.df[self.target_column].values)
         self.bias = np.mean(self.model.predict(self.df[covariate_columns].values))
         self.fitted = True
@@ -239,7 +268,7 @@ class MLVarianceReducer(AbstractVarianceReduction):
             Name for the new transformed target column, if is not defined
             it will be generated automatically.
         """
-        self._check_columns(covariate_columns)
+        self._check_cols(self.df, covariate_columns)
         self._check_fitted()
         prediction: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
         new_target: np.ndarray = prediction + np.mean(self.df[self.target_column]) - np.mean(prediction)

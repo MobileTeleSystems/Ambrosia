@@ -209,7 +209,7 @@ def data_variance_lin() -> pd.DataFrame:
 
 @pytest.fixture()
 @pytest.mark.variance()
-def data_notlin_var() -> pd.DataFrame:
+def data_nonlin_var() -> pd.DataFrame:
     """
     Table with Y = X_1 ** 2 + 3 * sqrt(X_2) + 4 * log(X_3) ** 5 + N(0, 0.1)
     """
@@ -226,3 +226,16 @@ def data_for_agg() -> pd.DataFrame:
     """
     table: pd.DataFrame = pd.read_csv("tests/test_data/week_metrics.csv")
     return table
+
+
+@pytest.fixture()
+@pytest.mark.designer()
+def robust_moments() -> pd.DataFrame:
+    """
+    Data frame for testing work of robust preprocessing tools.
+    These table is based on nonlin_var_table.csv.
+    Columns and rows are transformed using various preprocessing techniques
+    manually.
+    """
+    df = pd.read_csv("tests/test_data/robust_moments.csv", index_col=0)
+    return df
