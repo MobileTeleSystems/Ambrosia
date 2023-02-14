@@ -45,7 +45,7 @@ def check_target_type(
     column: types.ColumnNameType,
 ):
     """
-    Check type of target: binary / non-binary
+    Check type of target: binary / non-binary.
     """
     unique_vals_count = dataframe[column].nunique()
     if unique_vals_count > 2:
@@ -59,7 +59,9 @@ def check_target_type(
 def stabilize_effect(
     eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
 ):
-    """Evaluate stabilized effect for solve_power method."""
+    """
+    Evaluate stabilized effect for solve_power method.
+    """
     if target_type == "non-binary":
         return (eff - 1) * mean / std
     elif target_type == "binary":
@@ -76,7 +78,9 @@ def stabilize_effect(
 def destabilize_effect(
     eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
 ):
-    """Evaluate destabilized effect from solve_power method (statsmodels)."""
+    """
+    Evaluate destabilized effect from solve_power method (statsmodels).
+    """
     if target_type == "non-binary":
         return eff * std / mean
     elif target_type == "binary":
@@ -91,15 +95,15 @@ def destabilize_effect(
 
 
 def get_sample_size(
-    mean,
-    std,
-    eff=EFFECT_DEFAULT,
-    alpha=FIRST_TYPE_ERROR,
-    beta=SECOND_TYPE_ERROR,
-    target_type="non-binary",
-    groups_ratio=1.0,
-    alternative="two-sided",
-    stabilizing_method="asin",
+    mean: float,
+    std: float,
+    eff: float = EFFECT_DEFAULT,
+    alpha: float = FIRST_TYPE_ERROR,
+    beta: float = SECOND_TYPE_ERROR,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ):
     """
     Calculate minimum sample size to catch effect with fixed errors.
@@ -116,18 +120,20 @@ def get_sample_size(
         First type error
     beta : float, default: ``0.2``
         Second type error
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -151,15 +157,15 @@ def get_sample_size(
 
 
 def get_minimal_determinable_effect(
-    mean,
-    std,
-    sample_size,
-    alpha=FIRST_TYPE_ERROR,
-    beta=SECOND_TYPE_ERROR,
-    target_type="non-binary",
-    groups_ratio=1.0,
-    alternative="two-sided",
-    stabilizing_method="asin",
+    mean: float,
+    std: float,
+    sample_size: int,
+    alpha: float = FIRST_TYPE_ERROR,
+    beta: float = SECOND_TYPE_ERROR,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ):
     """
     Calculate power for given minimum detectable effect and group size.
@@ -176,18 +182,20 @@ def get_minimal_determinable_effect(
         First type error
     beta : float, default: ``0.2``
         Second type error
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -209,10 +217,10 @@ def get_power(
     sample_size: int,
     effect: float,
     alpha: float = FIRST_TYPE_ERROR,
-    target_type="non-binary",
-    groups_ratio=1.0,
-    alternative="two-sided",
-    stabilizing_method="asin",
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> float:
     """
     Calculate minimum detectable effect which we can find.
@@ -229,18 +237,20 @@ def get_power(
         Second type error
     alpha : float, default: ``1.01``
         First type error
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -291,22 +301,24 @@ def get_table_sample_size(
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with minimal sample sizes for each effect and error from input data.
     """
     multiindex = pd.MultiIndex.from_tuples([(eff,) for eff in effects], names=["effect"])
@@ -366,16 +378,18 @@ def design_groups_size(
     second_errors: Iterable of floats
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -419,20 +433,22 @@ def get_minimal_effects_table(
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -501,22 +517,24 @@ def design_effect(
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with minimal effects for each sample size and error from input data.
     """
     target_type = check_target_type(dataframe, column)
@@ -565,24 +583,26 @@ def get_power_table(
     first_errors : Iterable, default: ``(0.05,)``
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
-    target_type: str, default: ``non-binary``
+    target_type : str, default: ``non-binary``
         Type of target metric: binary or non-binary
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with  sample sizes for each effect and error from input data.
     """
     effects_str = [str(round((effect - 1) * 100, ROUND_DIGITS_PERCENT)) + "%" for effect in effects]
@@ -648,22 +668,24 @@ def design_power(
     first_errors : Iterable[float], default: ``(0.05,)``
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
-    groups_ratio: float, default: 1.0
-        Ratio between two groups
-    alternative: str, default: ``two-sided``
-        Alternative hypothesis, can be ``two-sided``, ``larger``, ``smaller``.
-        ``larger`` - if effect is positive.
-        ``smaller`` - if effect is negative.
-    stabilizing_method: str, default: ``asin``
-        Effect trasformation. Can be ``asin`` and ``norm``.
-        For non-binary metrics: only ``norm`` is accceptable.
-        For binary metrics: ``norm`` and ``asin``, but ``asin`` is more robust and accurate.
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with power for each effect and samples from input data.
     """
     target_type = check_target_type(dataframe, column)
