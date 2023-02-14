@@ -12,11 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from math import asin
 from typing import Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd
 import scipy.stats as sps
+import statsmodels.stats as stats
+import statsmodels.stats.api as sms
 from scipy.stats import norm
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
@@ -30,14 +33,78 @@ ROUND_DIGITS_PERCENT: int = 1
 
 
 def get_stats(values: Iterable[float], ddof: int = 1) -> Tuple[float, float]:
-    return np.mean(values), np.std(values, ddof=ddof)  # 1 for ubbiased estimation
+    return np.mean(values), np.std(values, ddof=ddof)  # 1 for unbiased estimation
 
 
 def get_table_stats(data: pd.DataFrame, column: types.ColumnNameType) -> Tuple[float, float]:
     return get_stats(data[column].values)
 
 
-def get_sample_size(mean, std, eff=EFFECT_DEFAULT, alpha=FIRST_TYPE_ERROR, beta=SECOND_TYPE_ERROR):
+def check_target_type(
+    dataframe: pd.DataFrame,
+    column: types.ColumnNameType,
+):
+    """
+    Check type of target: binary / non-binary.
+    """
+    unique_vals_count = dataframe[column].nunique()
+    if unique_vals_count > 2:
+        return "non-binary"
+    unique_vals = set(dataframe[column].unique())
+    if unique_vals == {0, 1} or unique_vals in {0, 1}:
+        return "binary"
+    return "non-binary"
+
+
+def stabilize_effect(
+    eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
+):
+    """
+    Evaluate stabilized effect for solve_power method.
+    """
+    if target_type == "non-binary":
+        return (eff - 1) * mean / std
+    elif target_type == "binary":
+        if stabilizing_method == "asin":
+            return 2 * (asin((mean * eff) ** 0.5) - asin(mean**0.5))
+        elif stabilizing_method == "norm":
+            return mean * (eff - 1) / ((mean * (1 - mean)) ** 0.5)
+        else:
+            raise Exception("Invalid stabilizing_method")
+    else:
+        raise Exception("Invalid target_type")
+
+
+def destabilize_effect(
+    eff: float, mean: float, std: float, target_type: str = "binary", stabilizing_method: str = "asin"
+):
+    """
+    Evaluate destabilized effect from solve_power method (statsmodels).
+    """
+    if target_type == "non-binary":
+        return eff * std / mean
+    elif target_type == "binary":
+        if stabilizing_method == "asin":
+            return np.sin((eff + 2 * asin(mean**0.5)) / 2) ** 2 / mean - 1
+        elif stabilizing_method == "norm":
+            return eff * (mean * (1 - mean)) ** 0.5 / mean
+        else:
+            raise Exception("Invalid stabilizing_method")
+    else:
+        raise Exception("Invalid target_type")
+
+
+def get_sample_size(
+    mean: float,
+    std: float,
+    eff: float = EFFECT_DEFAULT,
+    alpha: float = FIRST_TYPE_ERROR,
+    beta: float = SECOND_TYPE_ERROR,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
+):
     """
     Calculate minimum sample size to catch effect with fixed errors.
 
@@ -53,6 +120,20 @@ def get_sample_size(mean, std, eff=EFFECT_DEFAULT, alpha=FIRST_TYPE_ERROR, beta=
         First type error
     beta : float, default: ``0.2``
         Second type error
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -60,17 +141,32 @@ def get_sample_size(mean, std, eff=EFFECT_DEFAULT, alpha=FIRST_TYPE_ERROR, beta=
         Minimal sample size
 
     """
-    t_alpha = abs(norm.ppf(alpha / 2, loc=0, scale=1))
-    t_beta = norm.ppf(1 - beta, loc=0, scale=1)
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
+    stabilized_effect = stabilize_effect(
+        eff=eff, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
+    )
+    sample_size = power_class.solve_power(
+        effect_size=stabilized_effect,
+        nobs1=None,
+        alpha=alpha,
+        power=1 - beta,
+        ratio=groups_ratio,
+        alternative=alternative,
+    )
+    return int(np.ceil(sample_size))
 
-    mu_diff_squared = (mean - mean * eff) ** 2
-    z_scores_sum_squared = (t_alpha + t_beta) ** 2
-    disp_sum = 2 * (std**2)
-    sample_size = int(np.ceil(z_scores_sum_squared * disp_sum / mu_diff_squared))
-    return sample_size
 
-
-def get_minimal_determinable_effect(mean, std, sample_size, alpha=FIRST_TYPE_ERROR, beta=SECOND_TYPE_ERROR):
+def get_minimal_determinable_effect(
+    mean: float,
+    std: float,
+    sample_size: int,
+    alpha: float = FIRST_TYPE_ERROR,
+    beta: float = SECOND_TYPE_ERROR,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
+):
     """
     Calculate power for given minimum detectable effect and group size.
 
@@ -86,6 +182,20 @@ def get_minimal_determinable_effect(mean, std, sample_size, alpha=FIRST_TYPE_ERR
         First type error
     beta : float, default: ``0.2``
         Second type error
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -93,16 +203,25 @@ def get_minimal_determinable_effect(mean, std, sample_size, alpha=FIRST_TYPE_ERR
         Minimal effect which we can find
 
     """
-    t_alpha = abs(norm.ppf(alpha / 2, loc=0, scale=1))
-    t_beta = norm.ppf(1 - beta, loc=0, scale=1)
-
-    z_scores_sum = t_alpha + t_beta
-    disp_sum_sqrt = ((std**2) + (std**2)) ** 0.5
-    mde = z_scores_sum * disp_sum_sqrt / (mean * np.sqrt(sample_size))
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
+    stabilized_mde = power_class.solve_power(
+        effect_size=None, nobs1=sample_size, alpha=alpha, power=1 - beta, ratio=groups_ratio, alternative=alternative
+    )
+    mde = destabilize_effect(stabilized_mde, mean, std, target_type, stabilizing_method)
     return mde
 
 
-def get_power(mean: float, std: float, sample_size: int, effect: float, alpha: float = FIRST_TYPE_ERROR) -> float:
+def get_power(
+    mean: float,
+    std: float,
+    sample_size: int,
+    effect: float,
+    alpha: float = FIRST_TYPE_ERROR,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
+) -> float:
     """
     Calculate minimum detectable effect which we can find.
 
@@ -118,19 +237,52 @@ def get_power(mean: float, std: float, sample_size: int, effect: float, alpha: f
         Second type error
     alpha : float, default: ``1.01``
         First type error
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
     power : float
         Power effect with fixed size and effect
     """
-    absolute_effect: float = mean * (1 - effect)
-    point: float = norm.ppf(1 - alpha / 2) + np.sqrt(sample_size / 2) / std * absolute_effect
-    second_error: float = norm.cdf(point)
-    return 1 - second_error
+    power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
+    stabilized_effect = stabilize_effect(
+        eff=effect, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
+    )
+    power = power_class.solve_power(
+        effect_size=stabilized_effect,
+        nobs1=sample_size,
+        alpha=alpha,
+        power=None,
+        ratio=groups_ratio,
+        alternative=alternative,
+    )
+    return power
 
 
-def get_table_sample_size(mean, std, effects, first_errors, second_errors):
+def get_table_sample_size(
+    mean: float,
+    std: float,
+    effects: types.EffectType,
+    first_errors: types.StatErrorType = (0.05,),
+    second_errors: types.StatErrorType = (0.2,),
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
+):
     """
     Create table of sample sizes for different effects and errors.
 
@@ -149,10 +301,24 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors):
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with minimal sample sizes for each effect and error from input data.
     """
     multiindex = pd.MultiIndex.from_tuples([(eff,) for eff in effects], names=["effect"])
@@ -166,7 +332,15 @@ def get_table_sample_size(mean, std, effects, first_errors, second_errors):
             for second_err in second_errors:
                 err = f"({first_err}; {second_err})"
                 df_results.loc[(eff,), (err,)] = get_sample_size(
-                    mean=mean, std=std, eff=eff, alpha=first_err, beta=second_err
+                    mean=mean,
+                    std=std,
+                    eff=eff,
+                    alpha=first_err,
+                    beta=second_err,
+                    target_type=target_type,
+                    groups_ratio=groups_ratio,
+                    alternative=alternative,
+                    stabilizing_method=stabilizing_method,
                 )
     df_results.index = pd.MultiIndex(
         levels=[[f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in effects]],
@@ -182,6 +356,9 @@ def design_groups_size(
     effects: Iterable[float],
     first_errors: Iterable[float],
     second_errors: Iterable[float],
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Get table for designing samples size for experiment.
@@ -201,14 +378,29 @@ def design_groups_size(
     second_errors: Iterable of floats
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
     df_results : pd.DataFrame
         Table with minimal sample sizes for each effect and error from input data.
     """
+    target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
-    return get_table_sample_size(mean, std, effects, first_errors, second_errors)
+    return get_table_sample_size(
+        mean, std, effects, first_errors, second_errors, target_type, groups_ratio, alternative, stabilizing_method
+    )
 
 
 def get_minimal_effects_table(
@@ -218,6 +410,10 @@ def get_minimal_effects_table(
     first_errors: Iterable[float],
     second_errors: Iterable[float],
     as_numeric: bool = False,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of effects for different sample sizes and errors.
@@ -237,8 +433,22 @@ def get_minimal_effects_table(
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
@@ -255,7 +465,15 @@ def get_minimal_effects_table(
             for second_err in second_errors:
                 err = f"({first_err}; {second_err})"
                 effect = get_minimal_determinable_effect(
-                    mean=mean, std=std, sample_size=sample_size, alpha=first_err, beta=second_err
+                    mean=mean,
+                    std=std,
+                    sample_size=sample_size,
+                    alpha=first_err,
+                    beta=second_err,
+                    target_type=target_type,
+                    groups_ratio=groups_ratio,
+                    alternative=alternative,
+                    stabilizing_method=stabilizing_method,
                 )
                 str_effect = str(np.round(effect * 100, ROUND_DIGITS_PERCENT)) + "%"
                 if as_numeric:
@@ -277,6 +495,9 @@ def design_effect(
     first_errors: Iterable[float],
     second_errors: Iterable[float],
     as_numeric: bool = False,
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of effects for different sample sizes and errors.
@@ -296,16 +517,40 @@ def design_effect(
     second_errors : List
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with minimal effects for each sample size and error from input data.
     """
+    target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
-    return get_minimal_effects_table(mean, std, sample_sizes, first_errors, second_errors, as_numeric)
+    return get_minimal_effects_table(
+        mean,
+        std,
+        sample_sizes,
+        first_errors,
+        second_errors,
+        as_numeric,
+        target_type,
+        groups_ratio,
+        alternative,
+        stabilizing_method,
+    )
 
 
 def get_power_table(
@@ -315,6 +560,10 @@ def get_power_table(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
+    target_type: str = "non-binary",
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.
@@ -334,12 +583,26 @@ def get_power_table(
     first_errors : Iterable, default: ``(0.05,)``
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
+    target_type : str, default: ``non-binary``
+        Type of target metric: binary or non-binary
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with  sample sizes for each effect and error from input data.
     """
     effects_str = [str(round((effect - 1) * 100, ROUND_DIGITS_PERCENT)) + "%" for effect in effects]
@@ -351,7 +614,15 @@ def get_power_table(
     for effect in effects:
         for first_err in first_errors:
             power: np.ndarray = get_power(
-                mean=mean, std=std, sample_size=np.array(sample_sizes), effect=effect, alpha=first_err
+                mean=mean,
+                std=std,
+                sample_size=np.array(sample_sizes),
+                effect=effect,
+                alpha=first_err,
+                target_type=target_type,
+                groups_ratio=groups_ratio,
+                alternative=alternative,
+                stabilizing_method=stabilizing_method,
             )
             if as_numeric:
                 power = [np.round(p, ROUND_DIGITS_TABLE) for p in power]
@@ -375,6 +646,9 @@ def design_power(
     effects: Iterable[float],
     first_errors: Iterable[float] = (FIRST_TYPE_ERROR,),
     as_numeric: bool = False,
+    groups_ratio: float = 1.0,
+    alternative: str = "two-sided",
+    stabilizing_method: str = "asin",
 ) -> pd.DataFrame:
     """
     Create table of power for different sample sizes and effects.
@@ -394,16 +668,40 @@ def design_power(
     first_errors : Iterable[float], default: ``(0.05,)``
         1st and 2nd type errors.
         e.x.: [0.01, 0.05, 0.1]
-    as_numeric: bool, default False
+    as_numeric : bool, default False
         Whether to return a number or a string with percentages
+    groups_ratio : float, default: ``1.0``
+        Ratio between two groups.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
+        or ``"smaller"``.
+        ``"larger"`` - if effect is positive.
+        ``"smaller"`` - if effect is negative.
+    stabilizing_method : str, default: ``"asin"``
+        Effect trasformation. Can be ``"asin"`` and ``"norm"``.
+        For non-binary metrics: only ``"norm"`` is accceptable.
+        For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
+        is more robust and accurate.
 
     Returns
     -------
-    df_results : pandas df
+    df_results : pd.DataFrame
         Table with power for each effect and samples from input data.
     """
+    target_type = check_target_type(dataframe, column)
     mean, std = get_table_stats(dataframe, column)
-    return get_power_table(mean, std, sample_sizes, effects, first_errors, as_numeric=as_numeric)
+    return get_power_table(
+        mean,
+        std,
+        sample_sizes,
+        effects,
+        first_errors,
+        as_numeric,
+        target_type,
+        groups_ratio,
+        alternative,
+        stabilizing_method,
+    )
 
 
 def get_ttest_info(group_a: np.ndarray, group_b: np.ndarray, alpha: np.ndarray) -> Tuple[np.ndarray, float]:

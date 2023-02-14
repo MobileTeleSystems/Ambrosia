@@ -49,10 +49,10 @@ def test_corret_type(designer_simple_table, designer_ltv):
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_simple_table"), 736),
-        ("effect", pytest.lazy_fixture("designer_simple_table"), "54.3%"),
-        ("power", pytest.lazy_fixture("designer_simple_table"), "17.7%"),
-        ("size", pytest.lazy_fixture("designer_ltv"), 1552),
+        ("size", pytest.lazy_fixture("designer_simple_table"), 603),
+        ("effect", pytest.lazy_fixture("designer_simple_table"), "49.2%"),
+        ("power", pytest.lazy_fixture("designer_simple_table"), "20.7%"),
+        ("size", pytest.lazy_fixture("designer_ltv"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv"), "35.6%"),
     ],
@@ -151,19 +151,31 @@ def test_design_function(ltv_and_retention_dataset, designer_ltv):
 @pytest.mark.parametrize("effects", [1.05, [1.01, 1.05]])
 @pytest.mark.parametrize("sizes", [200, [100, 200]])
 @pytest.mark.parametrize("beta", [0.2, [0.1, 0.2]])
-def test_design_binary_function(to_design, effects, sizes, beta):
+@pytest.mark.parametrize("method", ["theory", "binary"])
+@pytest.mark.parametrize("groups_ratio", [1.0, 1.5, 2.0, 5.0])
+@pytest.mark.parametrize("alternative", ["two-sided", "larger"])
+def test_design_binary_function(to_design, effects, sizes, beta, method, groups_ratio, alternative):
     """
     Design binary function smoke test
     """
     pa: float = 0.3
-    design_binary(to_design=to_design, prob_a=pa, sizes=sizes, effects=effects, second_type_errors=beta)
+    design_binary(
+        to_design=to_design,
+        prob_a=pa,
+        sizes=sizes,
+        effects=effects,
+        second_type_errors=beta,
+        method=method,
+        groups_ratio=groups_ratio,
+        alternative=alternative,
+    )
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1552),
+        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv_spark"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv_spark"), "35.6%"),
     ],
