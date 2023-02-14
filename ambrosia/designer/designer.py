@@ -772,13 +772,15 @@ def design_binary_power(
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
+    if isinstance(first_type_errors, float):
+        first_type_errors = [first_type_errors]
     if method == "theory":
         return theory_pkg.get_power_table(
             mean=prob_a,
             std=None,
             sample_sizes=sizes,
             effects=effects,
-            first_errors=(first_type_errors,),
+            first_errors=first_type_errors,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
@@ -788,7 +790,7 @@ def design_binary_power(
         return bin_pkg.get_table_power_on_size_and_delta(
             p_a=prob_a,
             sample_sizes=sizes,
-            confidence_level=1 - first_type_errors,
+            first_errors=first_type_errors,
             delta_relative_values=effects,
             **kwargs,
         )
