@@ -33,9 +33,22 @@ GROUPS_COLUMNS: str = "group"
 AVAILLABLE_SPLIT_METHODS = ["simple", "hash", "metric", "dim_decrease"]
 
 
+def check_ids_duplicates(
+    dataframe: pd.DataFrame,
+    id_column: Optional[types.ColumnNameType] = None,
+) -> None:
+    """
+    Check if column with objects ids contains duplicates.
+    """
+    indices: np.ndarray = dataframe[id_column].values if id_column is not None else dataframe.index
+    if len(indices) > len(set(indices)):
+        raise ValueError(f"Id column {id_column} contains duplicates, ids must be unique for split")
+
+
 def get_integer_salt(salt: Optional[str]) -> int:
     """
-    Returns integer for random state numpy
+    Returns integer for random state numpy.
+
     Parameters
     ----------
     salt: Optional str
@@ -384,6 +397,7 @@ def get_split(
     groups : pd.DataFrame
         DataFrame with "group" column with group labels.
     """
+    check_ids_duplicates(dataframe, id_column)
     if stratifier is None:
         stratifier = strat_pkg.Stratification()
         stratifier.fit(dataframe, strat_columns)

@@ -406,7 +406,7 @@ class BootstrapStats:
         confidence_level: Union[float, Iterable[float]], default: ``0.95``
             Bounds for error, that is
             Pr (mean(metric) not in interval) <= alpha
-        alternative: str, defaulte: ``"two-sided"``
+        alternative : str, defaulte: ``"two-sided"``
                 Alternative for static criteria - two-sided, less, greater
                 Less means, that mean in first group less, than mean in second group
         Returns
@@ -440,7 +440,7 @@ class BootstrapStats:
         --------
         pvalue : float
             Corresponding pvalue
-        alternative: str, defaulte: ``"two-sided"``
+        alternative : str, defaulte: ``"two-sided"``
                 Alternative for static criteria - two-sided, less, greater
                 Less means, that mean in first group less, than mean in second group
         """

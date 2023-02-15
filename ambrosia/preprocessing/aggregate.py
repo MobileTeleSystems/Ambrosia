@@ -15,14 +15,16 @@
 Module contains class for data aggregation during a preprocessing task.
 """
 import copy
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 
 from ambrosia import types
+from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
+from ambrosia.tools.back_tools import wrap_cols
 
 
-class AggregatePreprocessor:
+class AggregatePreprocessor(AbstractFittableTransformer):
     """
     Preprocessing class for data aggregation.
 
@@ -46,10 +48,11 @@ class AggregatePreprocessor:
         Default aggregation method for real variables.
     groupby_columns : types.ColumnNamesType
         Columns which were used for groupping in the last aggregation.
-        Get value after run() / transform() method call.
+        Gets value after fitting the class instance.
     agg_params : Dict
-        Dictionary with aggregation rules which was used in the last aggregation.
-        Get value after run() / transform() method call.
+        Dictionary with aggregation rules which was used in the last
+        aggregation.
+        Gets value after fitting the class instance.
     """
 
     @staticmethod
@@ -85,19 +88,19 @@ class AggregatePreprocessor:
         agg_params = copy.deepcopy(aggregation_params)
         for column, method in agg_params.items():
             if column not in dataframe.columns:
-                raise ValueError(f"{column} not in columns!")
+                raise ValueError(f"{column} does not exist in the dataframe!")
             agg_params[column] = AggregatePreprocessor.__transform_agg_param(method)
         return agg_params
 
     def __init__(self, categorial_method: types.MethodType = "mode", real_method: types.MethodType = "sum"):
-        self.categorial_method = self.__transform_agg_param(categorial_method)
-        self.real_method = self.__transform_agg_param(real_method)
+        self.categorial_method = categorial_method
+        self.real_method = real_method
         self.agg_params = None
         self.groupby_columns = None
+        super().__init__()
 
     def __real_case_step(
         self,
-        dataframe: pd.DataFrame,
         agg_params: Optional[Dict] = None,
         real_cols: Optional[types.ColumnNamesType] = None,
     ) -> None:
@@ -105,16 +108,12 @@ class AggregatePreprocessor:
         A private method containing aggregation parameters filling logic
         for real metrics.
         """
-        if isinstance(real_cols, str):
-            real_cols = [real_cols]
+        real_cols = wrap_cols(real_cols)
         for real_feature in real_cols:
-            if real_feature not in dataframe.columns:
-                raise ValueError(f"{real_feature} is not in columns!")
             agg_params[real_feature] = self.real_method
 
     def __categorial_case_step(
         self,
-        dataframe: pd.DataFrame,
         agg_params: Optional[Dict] = None,
         categorial_cols: Optional[types.ColumnNamesType] = None,
     ) -> None:
@@ -122,16 +121,12 @@ class AggregatePreprocessor:
         A private method containing aggregation parameters filling logic
         for categorial metrics.
         """
-        if isinstance(categorial_cols, str):
-            categorial_cols = [categorial_cols]
+        categorial_cols = wrap_cols(categorial_cols)
         for categorial_feature in categorial_cols:
-            if categorial_feature not in dataframe.columns:
-                raise ValueError(f"{categorial_feature} is not in columns")
             agg_params[categorial_feature] = self.categorial_method
 
     def __empty_args_step(
         self,
-        dataframe: pd.DataFrame,
         agg_params: Optional[Dict] = None,
         real_cols: Optional[types.ColumnNamesType] = None,
         categorial_cols: Optional[types.ColumnNamesType] = None,
@@ -141,11 +136,37 @@ class AggregatePreprocessor:
         if no aggregation parameters passed.
         """
         if real_cols is not None:
-            self.__real_case_step(dataframe, agg_params, real_cols)
+            self.__real_case_step(agg_params, real_cols)
         if categorial_cols is not None:
-            self.__categorial_case_step(dataframe, agg_params, categorial_cols)
+            self.__categorial_case_step(agg_params, categorial_cols)
 
-    def run(
+    def get_params_dict(self) -> Dict:
+        """
+        Returns dictionary with parameters of the last run() or transform() call.
+        """
+        self._check_fitted()
+        return {"aggregation_params": self.agg_params, "groupby_columns": self.groupby_columns}
+
+    def load_params_dict(self, params: Dict) -> None:
+        """
+        Load prefitted parameters form a dictionary.
+
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with prefitted params.
+        """
+        if "groupby_columns" in params:
+            self.groupby_columns = params["groupby_columns"]
+        else:
+            raise TypeError(f"params argument must contain: {'column_names'}")
+        if "aggregation_params" in params:
+            self.agg_params = params["aggregation_params"]
+        else:
+            raise TypeError(f"params argument must contain: {'aggregation_params'}")
+        self.fitted = True
+
+    def fit(
         self,
         dataframe: pd.DataFrame,
         groupby_columns: types.ColumnNamesType,
@@ -154,11 +175,78 @@ class AggregatePreprocessor:
         categorial_cols: Optional[types.ColumnNamesType] = None,
     ) -> pd.DataFrame:
         """
-        The main method of data aggregation transformation.
+        Fit preprocessor with parameters of aggregation.
 
-        Aggregation is performed using aggregation dictionary with
+        Aggregation will be performed using passed dictionary with
         defined aggregation conditions for each columns of interest,
-        or columns lists with default class aggregation behavior.
+        or lists of columns with default class aggregation behavior.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Table with selected columns.
+        groupby_columns : types.ColumnNamesType
+            Columns for GROUP BY.
+        agg_params : Dict, optional
+            Dictionary with aggregation parameters.
+        real_cols : types.ColumnNamesType, optional
+            Columns with real metrics.
+            Overriden by ``agg_params`` parameter and could be passed if
+            expected default aggregation behavior.
+        categorial_cols : types.ColumnNamesType, optional
+            Columns with categorial metrics
+            Overriden by ``agg_params`` parameter and could be passed if
+            expected default aggregation behavior.
+
+        Returns
+        -------
+        self : object
+            Instance object.
+        """
+        if agg_params is None and real_cols is None and categorial_cols is None:
+            raise ValueError("Set agg_params or pass real_cols and categorial_cols")
+        if agg_params is None:
+            agg_params = {}
+            self.__empty_args_step(agg_params, real_cols, categorial_cols)
+        self._check_cols(dataframe, agg_params.keys())
+        self.groupby_columns = groupby_columns
+        self.agg_params = copy.deepcopy(agg_params)
+        self.fitted = True
+        return self
+
+    def transform(
+        self,
+        dataframe: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Apply table transformation by its aggregation with prefitted
+        parameters.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            Table to aggregate.
+
+        Returns
+        -------
+        agg_table : pd.DataFrame
+            Aggregated table.
+        """
+        self._check_fitted()
+        self._check_cols(dataframe, self.agg_params.keys())
+        agg_params = AggregatePreprocessor.__transform_params(dataframe, self.agg_params)
+        return dataframe.groupby(self.groupby_columns, as_index=False).agg(agg_params)
+
+    def fit_transform(
+        self,
+        dataframe: pd.DataFrame,
+        groupby_columns: types.ColumnNamesType,
+        agg_params: Optional[Dict] = None,
+        real_cols: Optional[types.ColumnNamesType] = None,
+        categorial_cols: Optional[types.ColumnNamesType] = None,
+    ) -> pd.DataFrame:
+        """
+        Fit preprocessor parameters using given dataframe and aggregate it.
 
         Parameters
         ----------
@@ -182,49 +270,5 @@ class AggregatePreprocessor:
         agg_table : pd.DataFrame
             Aggregated table.
         """
-        if agg_params is None and real_cols is None and categorial_cols is None:
-            raise ValueError("Set agg_params or pass real_cols and categorial_cols")
-        if agg_params is None:
-            agg_params = {}
-            self.__empty_args_step(dataframe, agg_params, real_cols, categorial_cols)
-        else:
-            agg_params = AggregatePreprocessor.__transform_params(dataframe, agg_params)
-        self.groupby_columns = groupby_columns
-        self.agg_params = agg_params
-        return dataframe.groupby(groupby_columns, as_index=False).agg(agg_params)
-
-    def transform(
-        self, dataframe: pd.DataFrame, groupby_columns: types.ColumnNamesType, agg_params: Dict
-    ) -> pd.DataFrame:
-        """
-        Apply table transformation by its aggregation with specified
-        parameters.
-
-        Parameters
-        ----------
-        dataframe : pd.DataFrame
-            Table to aggregate.
-        groupby_columns : types.ColumnNamesType
-            Columns for GROUP BY.
-        agg_params : Dict
-            Dictionary with aggregation parameters.
-
-        Returns
-        -------
-        agg_table : pd.DataFrame
-            Aggregated table.
-        """
-        agg_params = AggregatePreprocessor.__transform_params(dataframe, agg_params)
-        self.groupby_columns = groupby_columns
-        self.agg_params = agg_params
-        return dataframe.groupby(groupby_columns, as_index=False).agg(agg_params)
-
-    def get_params_dict(self) -> Dict:
-        """
-        Returns dictionary with parameters of the last run() or transform() call.
-        """
-        if self.agg_params is None:
-            raise AttributeError("Firstly use run or transform method")
-        if self.groupby_columns is None:
-            raise AttributeError("Firstly use run or transform method")
-        return {"aggregation_params": self.agg_params, "groupby_columns": self.groupby_columns}
+        self.fit(dataframe, groupby_columns, agg_params, real_cols, categorial_cols)
+        return self.transform(dataframe)
