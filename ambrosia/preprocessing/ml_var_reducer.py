@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
+import joblib
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
@@ -29,6 +30,7 @@ from sklearn.metrics import mean_squared_error
 from ambrosia import types
 from ambrosia.tools import log
 from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
+from ambrosia.tools.back_tools import wrap_cols
 
 
 class MLVarianceReducer(AbstractVarianceReducer):
@@ -45,11 +47,6 @@ class MLVarianceReducer(AbstractVarianceReducer):
 
     Parameters
     ----------
-    dataframe : pd.DataFrame
-        Table with data for transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which transformation will be
-        applied.
     model : str or model type, default: ``"boosting"``
         Model which will be used for the transformations.
     model_params : Dict, optional
@@ -63,19 +60,21 @@ class MLVarianceReducer(AbstractVarianceReducer):
 
     Attributes
     ----------
-    dataframe : pd.DataFrame
-        Table with data for transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which transformation will be
-        applied.
     model : model type
         Model which will be used for the transformations.
-    bias : float
-        Additional bias equals mean(M(X)).
+    params : Dict
+        Parameters of instance that will be updated after calling fit() method.
+        Include:
+        - target column name
+        - covariate columns names
+        - name of column after the transformation
+        - additional train bias equals mean(M(X)).
     scores : Dict[str, Callable]
         Scores which will be used.
     verbose : bool
         Verbose info flag.
+    fitted : bool
+        Fit status flag.
 
     Examples
     --------
@@ -84,27 +83,31 @@ class MLVarianceReducer(AbstractVarianceReducer):
     don't change over the time, it can be age for example. We want to reduce
     variance using the predictions some of ML model, then we can use this class:
 
-    >>> transformer = MLVarianceReducer(dataframe, 'target') # By default CatBoost model will be choosen
-    >>> transformer.fit_transform([feature columns], inplace=True, name='new_target')
+    >>> transformer = MLVarianceReducer() # By default CatBoost model will be choosen
+    >>> transformer.fit_transform(dataframe, 'target', [feature columns], inplace=True, name='new_target')
     >>> transformer.store_params('path_ml_params.json')
 
     Now to transform the experimental data we use the following commands:
 
-    >>> transformer = MLVarianceReducer(exp_data, 'target')
+    >>> transformer = MLVarianceReducer()
     >>> transformer.load_params('path_ml_params.json')
-    >>> transformer.transform([feature columns], inplace=True, name='new_target')
+    >>> transformer.transform(exp_data, inplace=True)
 
     Methods
     -------
+    get_params_dict()
+        Returns dict with instance fitted parameters.
+    load_params_dict()
+        Load parameters from the dict.
     store_params(store_path)
-        Store params to json file if fit() method has been previously called.
+        Store fitted params in a json file and pickle model file.
     load_params(load_path)
-        Load params from a json file.
-    fit(covariate_columns)
-        Fit model using a specific covariate columns.
-    transform(covariate_columns, inplace, name)
-        Transform target column after a model fitting.
-    fit_transform(covariate_column, inplace, name)
+        Load params from a json file and pickled model.
+    fit(**fit_params)
+        Fit model using a train data.
+    transform(dataframe, inplace)
+        Transform target column of a data frame.
+    fit_transform(dataframe, **fit_params, inplace)
         Combination of fit() and transform() methods.
     """
 
@@ -117,76 +120,10 @@ class MLVarianceReducer(AbstractVarianceReducer):
         else:
             self.score = {"MSE": mean_squared_error}
 
-    def get_params_dict(self) -> Dict:
-        """
-        Returns a dictionary with params.
-        """
-        self._check_fitted()
-        return {
-            "model": self.model,
-            "train_bias": self.bias,
-        }
-
-    def load_params_dict(self, params: Dict) -> None:
-        """
-        Load instance parameters from the dictionary.
-
-        Parameters
-        ----------
-        params : Dict
-            Dictionary with params.
-        """
-        if "model" in params:
-            self.model = params["model"]
-        else:
-            raise TypeError(f"params argument must contain: {'model'}")
-        if "lambda_" in params:
-            self.bias = np.array(params["train_bias"])
-        else:
-            raise TypeError(f"params argument must contain: {'train_bias'}")
-        self.fitted = True
-
-    def store_params(self, store_path: Path) -> None:
-        """
-        Store params of model as a json file, available only for CatBoost
-        model.
-
-        You can reach model using instance.model and store it by yourself.
-
-        Parameters
-        ----------
-         store_path : Path
-            Path where models parameters will be stored in a json format.
-        """
-        self.fitted = True
-        if isinstance(self.model, CatBoostRegressor):
-            self.model.save_model(store_path, format="json")
-            with open(store_path, "r+") as file:
-                data = json.load(file)
-                data.update({"train_bias": self.bias})
-            with open(store_path, "w+") as file:
-                json.dump(data, file)
-        else:
-            raise ValueError("Model cant be stored to json file, you can reach model by instance.model")
-
-    def load_params(self, load_path: Path) -> None:
-        """
-        Load models params from a json file, works only for CatBoost model.
-
-        Parameters
-        ----------
-        load_path: Path
-            Path to a json file with model parameters.
-        """
-        if not isinstance(self.model, CatBoostRegressor):
-            raise ValueError("Model cant be load from the file, set it via instance.model = ...")
-        self.model.load_model(load_path, format="json")
-        with open(load_path, "r+") as file:
-            data = json.load(file)
-            self.bias = data["train_bias"]
-        self.fitted = True
-
     def __create_model(self) -> None:
+        """
+        Construct variance reducing ML model.
+        """
         if not isinstance(self.model, str):
             self.model = self.model(**self.model_params)
         if self.model == "linear":
@@ -198,25 +135,20 @@ class MLVarianceReducer(AbstractVarianceReducer):
 
     def __init__(
         self,
-        dataframe: pd.DataFrame,
-        target_column: types.ColumnNameType,
         model: Union[str, Any] = "boosting",
         model_params: Optional[Dict] = None,
         scores: Optional[Dict[str, Callable]] = None,
         verbose: bool = True,
     ) -> None:
-        super().__init__(dataframe, target_column, verbose)
+        super().__init__(verbose)
+        self.params["covariate_columns"] = None
+        self.params["train_bias"] = None
         self.model = model
-        self.bias = None
-        if model_params is None:
-            self.model_params = {}
-        else:
-            self.model_params = model_params
-        self.__create_model()
+        self.model_params = {} if model_params is None else model_params
         self.__set_scorer(scores)
 
     def __str__(self) -> str:
-        return f"ML approach reduce for {self.target_column}"
+        return f"ML approach reduce for {self.params['target_column']}"
 
     def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:
         """
@@ -225,77 +157,178 @@ class MLVarianceReducer(AbstractVarianceReducer):
         Class must be fitted.
         """
         self._check_fitted()
-        y_hat = y - self.model.predict(X) + self.bias
+        y_hat = y - self.model.predict(X) + self.params["train_bias"]
         return y_hat
 
-    def _verbose_score(self, prediction: np.ndarray) -> None:
+    def _verbose_score(self, dataframe: pd.DataFrame, prediction: np.ndarray) -> None:
         for name, scorer in self.score.items():
-            current_score: float = scorer(self.df[self.target_column], prediction)
+            current_score: float = scorer(dataframe[self.params["target_column"]], prediction)
             log.info_log(f"Prediction {name} score - {current_score:.5f}")
 
-    def fit(self, covariate_columns: types.ColumnNamesType) -> None:
+    def _check_load_params(self, params: Dict) -> None:
+        for parameter in self.params:
+            if parameter in params:
+                self.params[parameter] = params[parameter]
+            else:
+                raise TypeError(f"params argument must contain: {parameter}")
+
+    def get_params_dict(self) -> Dict:
+        """
+        Returns a dictionary with params.
+
+        Returns
+        -------
+        params : Dict
+            Dictionary with fitted params.
+        """
+        self._check_fitted()
+        return {
+            "target_column": self.params["target_column"],
+            "covariate_columns": self.params["covariate_columns"],
+            "transformed_name": self.params["transformed_name"],
+            "train_bias": self.params["train_bias"],
+            "model": self.model,
+        }
+
+    def load_params_dict(self, params: Dict) -> None:
+        """
+        Load instance parameters from the dictionary.
+
+        Parameters
+        ----------
+        params : Dict
+            Dictionary with params.
+        """
+        self._check_load_params(params)
+        if "model" in params:
+            self.model = params["model"]
+        else:
+            raise TypeError(f"params argument must contain: {'model'}")
+        self.fitted = True
+
+    def store_params(self, config_store_path: Path, model_store_path: Path) -> None:
+        """
+        Store params of model as a json file, available only for CatBoost
+        model.
+
+        You can reach model using instance.model and store it by yourself.
+
+        Parameters
+        ----------
+         store_path : Path
+            Path where models parameters will be stored in a json format.
+        """
+        self._check_fitted()
+        with open(config_store_path, "w+") as file:
+            json.dump(self.params, file)
+        joblib.dump(self.model, model_store_path)
+
+    def load_params(self, config_load_path: Path, model_load_path: Path) -> None:
+        """
+        Load models params from a json file, works only for CatBoost model.
+
+        Parameters
+        ----------
+        load_path: Path
+            Path to a json file with model parameters.
+        """
+        with open(config_load_path, "r+") as file:
+            params = json.load(file)
+            self._check_load_params(params)
+        self.model = joblib.load(model_load_path)
+        self.fitted = True
+
+    def fit(
+        self,
+        dataframe: pd.DataFrame,
+        target_column: types.ColumnNameType,
+        covariate_columns: types.ColumnNamesType,
+        transformed_name: Optional[types.ColumnNamesType] = None,
+    ) -> None:
         """
         Fit model for transformations.
 
         Parameters
         ----------
+        dataframe : pd.DataFrame
+            Table with data for model fitting.
+        target_column : ColumnNameType
+            Column from the dataframe, for which transformation will be
+            applied.
         covariate_columns: ColumnNamesType
             Columns which will be used for the transformation.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         """
-        self._check_cols(self.df, covariate_columns)
-        self.model.fit(self.df[covariate_columns].values, self.df[self.target_column].values)
-        self.bias = np.mean(self.model.predict(self.df[covariate_columns].values))
+        covariate_columns = wrap_cols(covariate_columns)
+        self._check_cols(dataframe, [target_column] + covariate_columns)
+        self.__create_model()
+        self.model.fit(dataframe[covariate_columns].values, dataframe[target_column].values)
+
+        self.params["target_column"] = target_column
+        self.params["transformed_name"] = transformed_name
+        self.params["covariate_columns"] = covariate_columns
+        self.params["train_bias"] = np.mean(self.model.predict(dataframe[covariate_columns].values))
         self.fitted = True
 
     def transform(
         self,
-        covariate_columns: types.ColumnNamesType,
+        dataframe: pd.DataFrame,
         inplace: bool = False,
-        name: Optional[str] = None,
     ) -> Union[pd.DataFrame, None]:
         """
         Transform data using the fitted model.
 
         Parameters
         ----------
-        covariate_columns : ColumnNamesType
-            Columns which will be used for the transformations.
+        dataframe : pd.DataFrame
+            Table with data for transformation.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str, optional
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self._check_cols(self.df, covariate_columns)
+        self._check_cols(dataframe, [self.params["target_column"]] + self.params["covariate_columns"])
         self._check_fitted()
-        prediction: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
-        new_target: np.ndarray = prediction + np.mean(self.df[self.target_column]) - np.mean(prediction)
-        old_variance: float = np.var(self.df[self.target_column].values)
-        new_variance: float = np.var(prediction)
+        prediction: np.ndarray = self(
+            dataframe[self.params["target_column"]].values, dataframe[self.params["covariate_columns"]].values
+        )
+        new_target: np.ndarray = prediction + np.mean(dataframe[self.params["target_column"]]) - np.mean(prediction)
         if self.verbose:
+            old_variance: float = np.var(dataframe[self.params["target_column"]].values)
+            new_variance: float = np.var(prediction)
             self._verbose(old_variance, new_variance)
-            self._verbose_score(prediction)
-        return self._return_result(new_target, inplace, name)
+            self._verbose_score(dataframe, prediction)
+        return self._return_result(dataframe, new_target, inplace)
 
     def fit_transform(
-        self, covariate_columns: types.ColumnNamesType, inplace: bool = False, name: Optional[str] = None
+        self,
+        dataframe: pd.DataFrame,
+        target_column: types.ColumnNameType,
+        covariate_columns: types.ColumnNamesType,
+        transformed_name: Optional[types.ColumnNamesType] = None,
+        inplace: bool = False,
     ) -> Union[pd.DataFrame, None]:
         """
         Combinate consequentially ``fit()`` and ``transform()`` methods.
 
         Parameters
         ----------
-        covariate_columns : ColumnNamesType
-            Columns which will be used for the transformations.
+        dataframe : pd.DataFrame
+            Table with data for model fitting and further transformation.
+        target_column : ColumnNameType
+            Column from the dataframe, for which transformation will be
+            applied.
+        covariate_columns: ColumnNamesType
+            Columns which will be used for the transformation.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str, optional
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self.fit(covariate_columns)
-        return self.transform(covariate_columns, inplace, name)
+        self.fit(dataframe, target_column, covariate_columns, transformed_name)
+        return self.transform(dataframe, inplace)

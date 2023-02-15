@@ -24,6 +24,7 @@ import pandas as pd
 from ambrosia import types
 from ambrosia.tools import log
 from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
+from ambrosia.tools.back_tools import wrap_cols
 
 
 class RobustPreprocessor(AbstractFittableTransformer):
@@ -181,7 +182,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
         self : object
             Instance object.
         """
-        self.params["column_names"] = self._wrap_cols(column_names)
+        self.params["column_names"] = wrap_cols(column_names)
         self._check_cols(dataframe, self.params["column_names"])
         self.params["alpha"] = self.__wrap_alpha(alpha)
         self.params["tail"] = self.__check_tail(tail)
@@ -210,7 +211,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
         self._check_fitted()
         self._check_cols(dataframe, self.params["column_names"])
         if self.verbose:
-            prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
+            prev_stats: List[Dict[str, float]] = log.RobustLogger.get_stats(dataframe, self.params["column_names"])
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         if self.params["tail"] == "both":
@@ -229,8 +230,8 @@ class RobustPreprocessor(AbstractFittableTransformer):
                 f"""Making {self.params['tail']}-tail robust transformation of columns {self.params['column_names']}
                  with alphas = {np.round(self.params['alpha'], 3)}"""
             )
-            new_stats: Dict[str, float] = RobustLogger.get_stats(transformed, self.params["column_names"])
-            RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
+            new_stats: Dict[str, float] = log.RobustLogger.get_stats(transformed, self.params["column_names"])
+            log.RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
         return None if inplace else transformed
 
     def fit_transform(
@@ -380,7 +381,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         self : object
             Instance object.
         """
-        self.params["column_names"] = self._wrap_cols(column_names)
+        self.params["column_names"] = wrap_cols(column_names)
         self._check_cols(dataframe, self.params["column_names"])
         self.__calculate_params(dataframe)
         self.fitted = True
@@ -407,7 +408,7 @@ class IQRPreprocessor(AbstractFittableTransformer):
         self._check_fitted()
         self._check_cols(dataframe, self.params["column_names"])
         if self.verbose:
-            prev_stats: List[Dict[str, float]] = RobustLogger.get_stats(dataframe, self.params["column_names"])
+            prev_stats: List[Dict[str, float]] = log.RobustLogger.get_stats(dataframe, self.params["column_names"])
 
         transformed: pd.DataFrame = dataframe if inplace else dataframe.copy()
         iqr: np.ndarray = self.params["quartiles"][:, 1] - self.params["quartiles"][:, 0]
@@ -421,8 +422,8 @@ class IQRPreprocessor(AbstractFittableTransformer):
 
         if self.verbose:
             log.info_log(f"Making IQR transformation of columns {self.params['column_names']}")
-            new_stats: Dict[str, float] = RobustLogger.get_stats(transformed, self.params["column_names"])
-            RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
+            new_stats: Dict[str, float] = log.RobustLogger.get_stats(transformed, self.params["column_names"])
+            log.RobustLogger.verbose_list(prev_stats, new_stats, self.params["column_names"])
         return None if inplace else transformed
 
     def fit_transform(
@@ -451,57 +452,3 @@ class IQRPreprocessor(AbstractFittableTransformer):
         """
         self.fit(dataframe, column_names)
         return self.transform(dataframe, inplace)
-
-
-class RobustLogger:
-    """
-    Temporary class with methods for calculating and logging changes
-    in the characteristics of metric distributions during the preprocessing.
-    """
-
-    @staticmethod
-    def verbose(prev_stats: Dict[str, float], new_stats: Dict[str, float], name: str) -> None:
-        """
-        Verbose transormations to os.stdout.
-        """
-        for metric in prev_stats.keys():
-            prev: float = prev_stats[metric]
-            new: float = new_stats[metric]
-            log.info_log(f"Change {metric} {name}: {prev:.4f} ===> {new:.4f}")
-
-    @staticmethod
-    def verbose_list(
-        prev_stats: List[Dict[str, float]],
-        new_stats: List[Dict[str, float]],
-        names: types.ColumnNamesType,
-    ) -> None:
-        """
-        Verbose iteratively.
-        """
-        for name, stat_1, stat_2 in zip(names, prev_stats, new_stats):
-            log.info_log("\n")
-            RobustLogger.verbose(stat_1, stat_2, name)
-
-    @staticmethod
-    def __calculate_stats(values: np.ndarray) -> Dict[str, float]:
-        return {
-            "Mean": np.mean(values),
-            "Variance": np.var(values),
-            "IQR": np.quantile(values, 0.75) - np.quantile(values, 0.25),
-            "Range": np.max(values) - np.min(values),
-        }
-
-    @staticmethod
-    def get_stats(
-        df: pd.DataFrame,
-        names: types.ColumnNamesType,
-    ) -> List[Dict[str, float]]:
-        """
-        Get metrics for all columns.
-        """
-        result: List[Dict[str, float]] = []
-        for name in names:
-            err_msg: str = f"Column name is not in data frame, coumn - {name}"
-            assert name in df.columns, err_msg
-            result.append(RobustLogger.__calculate_stats(df[name].values))
-        return result

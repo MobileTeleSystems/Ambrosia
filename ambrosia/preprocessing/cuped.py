@@ -16,15 +16,14 @@
 Module contains CUPED-based data transformation methods for the experiment
 acceleration.
 """
-import json
-from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import AbstractVarianceReducer
+from ambrosia.tools.back_tools import wrap_cols
 
 
 class Cuped(AbstractVarianceReducer):
@@ -38,28 +37,22 @@ class Cuped(AbstractVarianceReducer):
 
     Parameters
     ----------
-    dataframe : pd.DataFrame
-        Table with data for CUPED transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which CUPED transformation will be
-        applied.
     verbose : bool, default: ``True``
         If ``True`` will print in sys.stdout the information
         about the variance reduction.
 
     Attributes
     ----------
-    dataframe : pd.DataFrame
-        Table with data for CUPED transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which CUPED transformation will be
-        applied.
+    params : Dict
+        Parameters of instance that will be updated after calling fit() method.
+        Include:
+        - target column name
+        - covariate column name
+        - name of column after the transformation
+        - linear coefficient for CUPED transformation.
+        - bias value for mean equality
     verbose : bool
         Verbose info flag.
-    theta : float
-        Linear coefficient for CUPED transformation.
-    bias : float
-        Bias value for mean equality.
     fitted : bool
         Flag if class was fitted.
 
@@ -73,26 +66,27 @@ class Cuped(AbstractVarianceReducer):
 
     >>> cuped_transformer = Cuped(dataframe, 'target', verbose=True)
     >>> cuped_transformer.fit_transform(
+    >>>     dataframe=dataframe
+    >>>     target_column='target'
     >>>     covariate_column='income',
+    >>>     transformed_name='cuped_target'
     >>>     inplace=True,
-    >>>     name='cuped_target'
     >>> )
 
     Now in the dataframe a new column "cuped_target" appeared, we can use it
     to design our experiment and estimate variance reduction. For further CUPED
-    usagein the future experiment, let us store the parameters:
+    usage in the future experiment, let us store the parameters:
 
     >>> cuped_transformer.store_params('cuped_transform_params.json')
 
     Now we conduct an experiment and want to transform our data to reduce its
     variation:
 
-    >>> cuped_transformation = Cuped(exp_results, 'target')
+    >>> cuped_transformation = Cuped()
     >>> cuped_transformation.load_params('cuped_transform_params.json')
     >>> cuped_transformation.transform(
-    >>>     covariate_column='income',
+    >>>     dataframe=exp_results,
     >>>     inplace=True,
-    >>>     name='cuped_transformed'
     >>> )
 
     Methods
@@ -116,24 +110,35 @@ class Cuped(AbstractVarianceReducer):
 
     THETA_NAME: str = "theta"
     BIAS_NAME: str = "bias"
+    non_serializable_params: List = [THETA_NAME, BIAS_NAME]
 
-    def __init__(self, dataframe: pd.DataFrame, target_column: types.ColumnNameType, verbose: bool = True) -> None:
-        super().__init__(dataframe, target_column, verbose)
-        self.theta = None
-        self.bias = None
-        self.cov: pd.DataFrame = dataframe.cov()
+    def __init__(self, verbose: bool = True) -> None:
+        super().__init__(verbose)
+        self.params["covariate_column"] = None
+        self.params[Cuped.THETA_NAME] = None
+        self.params[Cuped.BIAS_NAME] = None
 
     def __str__(self) -> str:
-        return f"СUPED for {self.target_column}"
+        return f"СUPED for {self.params['target_column']}"
+
+    def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:
+        self._check_fitted()
+        y_hat: np.ndarray = y - self.params[Cuped.THETA_NAME] * (X - self.params[Cuped.BIAS_NAME])
+        return y_hat
 
     def get_params_dict(self) -> Dict:
         """
         Returns a dictionary with params.
+
+        Returns
+        -------
+        params : Dict
+            Dictionary with fitted params.
         """
         self._check_fitted()
         return {
-            Cuped.THETA_NAME: self.theta,
-            Cuped.BIAS_NAME: self.bias,
+            key: (value if key not in Cuped.non_serializable_params else value.tolist())
+            for key, value in self.params.items()
         }
 
     def load_params_dict(self, params: Dict) -> None:
@@ -145,90 +150,112 @@ class Cuped(AbstractVarianceReducer):
         params : Dict
             Dictionary with params.
         """
-        if Cuped.THETA_NAME in params:
-            self.theta = params[Cuped.THETA_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {Cuped.THETA_NAME}")
-        if Cuped.BIAS_NAME in params:
-            self.bias = params[Cuped.BIAS_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {Cuped.BIAS_NAME}")
+        for parameter in self.params:
+            if parameter in params:
+                if parameter in Cuped.non_serializable_params:
+                    self.params[parameter] = np.array(params[parameter])
+                else:
+                    self.params[parameter] = params[parameter]
+            else:
+                raise TypeError(f"params argument must contain: {parameter}")
         self.fitted = True
 
-    def fit(self, covariate_column: types.ColumnNameType) -> None:
+    def fit(
+        self,
+        dataframe: pd.DataFrame,
+        target_column: types.ColumnNameType,
+        covariate_column: types.ColumnNameType,
+        transformed_name: Optional[types.ColumnNameType] = None,
+    ) -> None:
         """
         Fit to calculate CUPED parameters for target column using given
-        covariate column.
+        covariate column and data.
 
         Parameters
         ----------
+        dataframe : pd.DataFrame
+            Table with data for the calculation of CUPED parameters.
+        target_column : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
         covariate_column : ColumnNameType
             Column which will be used as the covariate in CUPED transformation.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         """
-        variance_covariate: float = self.cov.loc[covariate_column, covariate_column]
-        self.theta = self.cov.loc[self.target_column, covariate_column] / (super().EPSILON + variance_covariate)
-        self.bias = np.mean(self.df[covariate_column])
+        self._check_cols(dataframe, [target_column, covariate_column])
+        covariance: pd.DataFrame = dataframe[[target_column, covariate_column]].cov()
+        covariate_variance: float = covariance.loc[covariate_column, covariate_column]
+
+        self.params[Cuped.THETA_NAME] = covariance.loc[target_column, covariate_column] / (
+            super().EPSILON + covariate_variance
+        )
+        self.params[Cuped.BIAS_NAME] = np.mean(dataframe[covariate_column])
+        self.params["target_column"] = target_column
+        self.params["covariate_column"] = covariate_column
+        self.params["transformed_name"] = transformed_name
         self.fitted = True
 
-    def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:
-        self._check_fitted()
-        y_hat: np.ndarray = y - self.theta * (X - self.bias)
-        return y_hat
-
-    def transform(  # pylint: disable=W0237
+    def transform(
         self,
-        covariate_column: types.ColumnNameType,
+        dataframe: pd.DataFrame,
         inplace: bool = False,
-        name: Optional[str] = None,
     ) -> Union[pd.DataFrame, None]:
         """
-        Make CUPED transformation for target column.
+        Make CUPED transformation for the target column.
 
         Could be performed inplace or not.
 
         Parameters
         ----------
-        covariate_column : ColumnNameType
-            Column which will be used as the covariate.
+        dataframe : pd.DataFrame
+            Table with data for CUPED transformation.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self._check_cols(self.df, [covariate_column])
-        old_variance: float = self.cov.loc[self.target_column, self.target_column]
-        new_target: np.ndarray = self(self.df[self.target_column], self.df[covariate_column])
-        new_variance: float = np.var(new_target)
+        self._check_cols(dataframe, [self.params["target_column"], self.params["covariate_column"]])
+        new_target: np.ndarray = self(
+            dataframe[self.params["target_column"]], dataframe[self.params["covariate_column"]]
+        )
         if self.verbose:
+            old_variance: float = np.var(dataframe[self.params["target_column"]])
+            new_variance: float = np.var(new_target)
             self._verbose(old_variance, new_variance)
-        return self._return_result(new_target, inplace, name)
+        return self._return_result(dataframe, new_target, inplace)
 
     def fit_transform(
         self,
+        dataframe,
+        target_column,
         covariate_column: types.ColumnNameType,
+        transformed_name: Optional[types.ColumnNameType] = None,
         inplace: bool = False,
-        name: Optional[str] = None,
     ) -> Union[pd.DataFrame, None]:
         """
         Combination of fit() and transform() methods.
 
         Parameters
         ----------
+        dataframe : pd.DataFrame
+            Table with data for fitting and applying CUPED transformation.
+        target_column : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
         covariate_column : ColumnNameType
             Column which will be used as the covariate.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self.fit(covariate_column)
-        return self.transform(covariate_column, inplace, name)
+        self.fit(dataframe, target_column, covariate_column, transformed_name)
+        return self.transform(dataframe, inplace)
 
 
 class MultiCuped(AbstractVarianceReducer):
@@ -242,28 +269,22 @@ class MultiCuped(AbstractVarianceReducer):
 
     Parameters
     ----------
-    dataframe : pd.DataFrame
-        Table with data for Multi CUPED transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which CUPED transformation will be
-        applied.
     verbose : bool, default: ``True``
         If ``True`` will print in sys.stdout the information
         about the variance reduction.
 
     Attributes
     ----------
-    dataframe : pd.DataFrame
-        Table with data for Multi CUPED transformation.
-    target_column : ColumnNameType
-        Column from the dataframe, for which CUPED transformation will be
-        applied.
+    params : Dict
+        Parameters of instance that will be updated after calling fit() method.
+        Include:
+        - target column name
+        - covariate columns names
+        - name of column after the transformation
+        - linear coefficients for Multi CUPED transformation.
+        - bias value for mean equality
     verbose : bool
         Verbose info flag.
-    theta : float
-        Linear coefficient for Multi CUPED transformation.
-    bias : float
-        Bias value for mean equality.
     fitted : bool
         Flag if class was fitted.
 
@@ -280,11 +301,13 @@ class MultiCuped(AbstractVarianceReducer):
     Then, we can use Multi CUPED transformation based on "income" and "age"
     data in order to reduce "target" column variation.
 
-    >>> cuped_transformer = MultiCuped(dataframe, 'target', verbose=True)
+    >>> cuped_transformer = MultiCuped(verbose=True)
     >>> cuped_transformer.fit_transform(
+    >>>     dataframe=dataframe
+    >>>     target_column='target'
     >>>     ['income', 'age'],
+    >>>     transformed_name='cuped_target'
     >>>     inplace=True,
-    >>>     name='cuped_target'
     >>> )
 
     Now in the dataframe a new column "cuped_target" appeared, we can use it
@@ -296,12 +319,11 @@ class MultiCuped(AbstractVarianceReducer):
     Now we conduct an experiment and want to transform our data to reduce its
     variation:
 
-    >>> cuped_transformation = MultiCuped(exp_results, 'target')
+    >>> cuped_transformation = MultiCuped()
     >>> cuped_transformation.load_params('cuped_transform_params.json')
     >>> cuped_transformation.transform(
-    >>>     ['income', 'age'],
+    >>>     exp_results,
     >>>     inplace=True,
-    >>>     name='cuped_transformed'
     >>> )
 
     Methods
@@ -315,162 +337,167 @@ class MultiCuped(AbstractVarianceReducer):
         Store params to json file if fit() method has been previously called.
     load_params(load_path)
         Load params from a json file.
-    fit(covariate_columns)
+    fit(covariate_column)
         Fit model using covariate columns.
-    transform(covariate_columns, inplace, name)
+    transform(covariate_column, inplace, name)
         Transform target column after a class instance fitting.
-    fit_transform(covariate_columns, inplace, name)
+    fit_transform(covariate_column, inplace, name)
         Combination of fit() and transform() methods.
     """
 
     THETA_NAME: str = "theta"
     BIAS_NAME: str = "bias"
+    non_serializable_params: List = [THETA_NAME, BIAS_NAME]
+
+    def __init__(self, verbose: bool = True) -> None:
+        super().__init__(verbose)
+        self.params["covariate_columns"] = None
+        self.params[MultiCuped.THETA_NAME] = None
+        self.params[MultiCuped.BIAS_NAME] = None
 
     def __str__(self) -> str:
-        return f"Multi СUPED for {self.target_column}"
+        return f"Multi СUPED for {self.params['target_column']}"
 
-    def __init__(self, dataframe: pd.DataFrame, target_column: types.ColumnNamesType, verbose: bool = True) -> None:
-        super().__init__(dataframe, target_column, verbose)
-        self.theta = None
-        self.bias = None
-        self.cov: pd.DataFrame = dataframe.cov()
+    def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:
+        self._check_fitted()
+        y_hat: np.ndarray = y - (X @ self.params[MultiCuped.THETA_NAME]).reshape(-1) + self.params[MultiCuped.BIAS_NAME]
+        return y_hat
 
     def get_params_dict(self) -> Dict:
         """
-        Parameters
-        ----------
+        Returns a dictionary with params.
+
+        Returns
+        -------
         params : Dict
-            Dictionary with params.
+            Dictionary with fitted params.
         """
         self._check_fitted()
         return {
-            MultiCuped.THETA_NAME: self.theta,
-            MultiCuped.BIAS_NAME: self.bias,
+            key: (value if key not in MultiCuped.non_serializable_params else value.tolist())
+            for key, value in self.params.items()
         }
 
     def load_params_dict(self, params: Dict) -> None:
         """
+        Load model parameters from the dictionary.
+
         Parameters
         ----------
         params : Dict
             Dictionary with params.
         """
-        if MultiCuped.THETA_NAME in params:
-            self.theta = params[MultiCuped.THETA_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {MultiCuped.THETA_NAME}")
-        if MultiCuped.BIAS_NAME in params:
-            self.bias = params[MultiCuped.BIAS_NAME]
-        else:
-            raise TypeError(f"params argument must contain: {MultiCuped.BIAS_NAME}")
+        for parameter in self.params:
+            if parameter in params:
+                if parameter in MultiCuped.non_serializable_params:
+                    self.params[parameter] = np.array(params[parameter])
+                else:
+                    self.params[parameter] = params[parameter]
+            else:
+                raise TypeError(f"params argument must contain: {parameter}")
         self.fitted = True
 
-    def store_params(self, store_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        store_path : Path
-            Path where parameters will be stored in a json format.
-        """
-        self._check_fitted()
-        with open(store_path, "w+") as file:
-            params: Dict[str, float] = {}
-            for j in range(self.theta.shape[0]):
-                params["theta_" + str(j)] = self.theta[j][0]
-            params["bias"] = self.bias
-            json.dump(params, file)
-
-    def load_params(self, load_path: Path) -> None:
-        """
-        Parameters
-        ----------
-        load_path : Path
-            Path to json file with parameters.
-        """
-        with open(load_path, "r+") as file:
-            params = json.load(file)
-            dimension: int = len(params) - 1
-            self.theta: np.ndarray = np.zeros((dimension, 1))
-            for j in range(dimension):
-                self.theta[j][0] = params["theta_" + str(j)]
-            self.bias = params["bias"]
-            self.fitted = True
-
-    def fit(self, covariate_columns: types.ColumnNamesType) -> None:
+    def fit(
+        self,
+        dataframe: pd.DataFrame,
+        target_column: types.ColumnNameType,
+        covariate_columns: types.ColumnNamesType,
+        transformed_name: Optional[types.ColumnNameType] = None,
+    ) -> None:
         """
         Fit to calculate Multi CUPED parameters for target column using selected
         covariate columns.
 
         Parameters
         ----------
+        dataframe : pd.DataFrame
+            Table with data for the calculation of CUPED parameters.
+        target_column : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
         covariate_columns : ColumnNamesType
             Columns which will be used as the covariates in Multi CUPED
             transformation.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         """
-        self._check_cols(self.df, covariate_columns)
-        matrix: np.ndarray = self.cov.loc[covariate_columns, covariate_columns]
-        amount_features: int = len(covariate_columns)
-        covariance_target: np.ndarray = self.cov.loc[covariate_columns, self.target_column].values.reshape(
-            amount_features, -1
+        covariate_columns = wrap_cols(covariate_columns)
+        cols_concat: List = [target_column] + covariate_columns
+        self._check_cols(dataframe, cols_concat)
+        covariance: np.ndarray = dataframe[cols_concat].cov()
+        matrix: np.ndarray = covariance.loc[covariate_columns, covariate_columns]
+        num_features: int = len(covariate_columns)
+        covariance_target: np.ndarray = covariance.loc[covariate_columns, target_column].values.reshape(
+            num_features, -1
         )
-        self.theta = np.linalg.inv(matrix) @ covariance_target
-        self.bias: np.ndarray = (self.df[covariate_columns].values @ self.theta).reshape(-1).mean()
+
+        self.params[MultiCuped.THETA_NAME] = np.linalg.inv(matrix) @ covariance_target
+        self.params[MultiCuped.BIAS_NAME]: np.ndarray = (
+            (dataframe[covariate_columns].values @ self.params[MultiCuped.THETA_NAME]).reshape(-1).mean()
+        )
+        self.params["target_column"] = target_column
+        self.params["covariate_columns"] = covariate_columns
+        self.params["transformed_name"] = transformed_name
         self.fitted = True
 
-    def __call__(self, y: np.ndarray, X: np.ndarray) -> np.ndarray:
-        self._check_fitted()
-        y_hat: np.ndarray = y - (X @ self.theta).reshape(-1) + self.bias
-        return y_hat
-
     def transform(
-        self, covariate_columns: types.ColumnNamesType, inplace: bool = False, name: Optional[str] = None
+        self,
+        dataframe: pd.DataFrame,
+        inplace: bool = False,
     ) -> Union[pd.DataFrame, None]:
         """
-        Make Multi CUPED transformation for target column.
+        Make Multi CUPED transformation for the target column.
 
         Could be performed inplace or not.
 
         Parameters
         ----------
-        covariate_columns : ColumnNamesType
-            Columns which will be used as the covariates.
+        dataframe : pd.DataFrame
+            Table with data for Multi CUPED transformation.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self._check_cols(self.df, covariate_columns)
-        old_variance: float = self.cov.loc[self.target_column, self.target_column]
+        self._check_cols(dataframe, [self.params["target_column"]] + self.params["covariate_columns"])
         self._check_fitted()
-        new_target: np.ndarray = self(self.df[self.target_column].values, self.df[covariate_columns].values)
-        new_variance: float = np.var(new_target)
+        new_target: np.ndarray = self(
+            dataframe[self.params["target_column"]].values, dataframe[self.params["covariate_columns"]].values
+        )
         if self.verbose:
+            old_variance: float = np.var(dataframe[self.params["target_column"]])
+            new_variance: float = np.var(new_target)
             self._verbose(old_variance, new_variance)
-        return self._return_result(new_target, inplace, name)
+        return self._return_result(dataframe, new_target, inplace)
 
     def fit_transform(
         self,
+        dataframe: pd.DataFrame,
+        target_column: types.ColumnNameType,
         covariate_columns: types.ColumnNamesType,
+        transformed_name: Optional[types.ColumnNameType] = None,
         inplace: bool = False,
-        name: Optional[str] = None,
     ) -> Union[pd.DataFrame, None]:
         """
         Combination of fit() and transform() methods.
 
         Parameters
         ----------
-        covariate_columns : ColumnNamesType
-            Columns which will be used as the covariates.
+        dataframe : pd.DataFrame
+            Table with data for fitting and applying Multi CUPED transformation.
+        target_column : ColumnNameType
+            Column from the dataframe, for which CUPED transformation will be
+            applied.
+        covariate_column : ColumnNameType
+            Column which will be used as the covariate.
+        transformed_name : ColumnNamesType, optional
+            Name for the new transformed target column, if is not defined
+            it will be generated automatically.
         inplace : bool, default: ``False``
             If is ``True``, then method returns ``None`` and
             sets a new column for the original dataframe.
             Otherwise return copied dataframe with a new column.
-        name : str
-            Name for the new transformed target column, if is not defined
-            it will be generated automatically.
         """
-        self.fit(covariate_columns)
-        return self.transform(covariate_columns, inplace, name)
+        self.fit(dataframe, target_column, covariate_columns, transformed_name)
+        return self.transform(dataframe, inplace)
