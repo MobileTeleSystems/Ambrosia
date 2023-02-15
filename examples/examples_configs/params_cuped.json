@@ -1,1 +1,1 @@
-{"theta": 23.521697221599357, "bias": 349.821852624589}
+{"target_column": "watched", "transformed_name": "watched_cuped", "covariate_column": "audio", "theta": 23.563803942858453, "bias": 349.92680738762783}

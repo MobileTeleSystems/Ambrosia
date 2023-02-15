@@ -94,7 +94,7 @@ def calculate_pvalue_by_delta_method(
         Mean size of two groups
     transformation : str
         Continuous transformation of random variable
-    alternative: str, default: ``two-sided``
+    alternative : str, default: ``two-sided``
         Alternative for static criteria - two-sided, less, greater
         Less means, that mean in first group less, than mean in second group
     Returns
