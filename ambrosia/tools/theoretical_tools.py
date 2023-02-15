@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 from math import asin
-from typing import Iterable, List, Tuple, Set, Dict
+from typing import Dict, Iterable, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
