@@ -518,7 +518,7 @@ def get_table_power_on_size_and_delta(
             }
             conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
             power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
-            table.loc[(alpha, delta), trials] = power
+            table.loc[(alpha, delta), trials] = [str(round(power_val * 100, 1)) + "%" for power_val in power]
     table_title: str = r"$1 - \beta$: power of criterion, " + (
         r"$p_a-p_b=\Delta$" if delta_values else r"$p_a\delta=p_b$"
     )

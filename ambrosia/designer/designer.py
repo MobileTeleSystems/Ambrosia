@@ -407,10 +407,10 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             Ratio between two groups.
             Acceptable only for ``"theory"`` method!
         alternative : str, default: ``"two-sided"``
-            Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-            or ``"smaller"``.
-            ``"larger"`` - if effect is positive.
-            ``"smaller"`` - if effect is negative.
+            Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+            or ``"less"``.
+            ``"greater"`` - if effect is positive.
+            ``"less"`` - if effect is negative.
             Acceptable only for ``"theory"`` method!
         stabilizing_method : str, default: ``"asin"``
             Effect trasformation. Can be ``"asin"`` and ``"norm"``.
@@ -530,10 +530,10 @@ def design(
         Ratio between two groups.
         Acceptable only for ``"theory"`` method!
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
         Acceptable only for ``"theory"`` method!
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
@@ -593,10 +593,10 @@ def design_binary_size(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -674,10 +674,10 @@ def design_binary_effect(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -751,10 +751,10 @@ def design_binary_power(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -839,10 +839,10 @@ def design_binary(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
