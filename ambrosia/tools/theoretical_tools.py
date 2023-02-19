@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 from math import asin
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -33,11 +33,29 @@ ROUND_DIGITS_PERCENT: int = 1
 
 
 def get_stats(values: Iterable[float], ddof: int = 1) -> Tuple[float, float]:
+    """
+    Calculate the mean and standard value for a list of values.
+    """
     return np.mean(values), np.std(values, ddof=ddof)  # 1 for unbiased estimation
 
 
 def get_table_stats(data: pd.DataFrame, column: types.ColumnNameType) -> Tuple[float, float]:
+    """
+    Calculate the mean and standard value a data frame column.
+    """
     return get_stats(data[column].values)
+
+
+def check_encode_alternative(alternative: str) -> str:
+    """
+    Check the correctness of the alternative and encode for use in statsmodels api.
+    """
+    alternatives: Set = {"two-sided", "greater", "less"}
+    statsmodels_alternatives_encoding: Dict = {"two-sided": "two-sided", "greater": "larger", "less": "smaller"}
+    if alternative not in alternatives:
+        raise ValueError(f"Alternative must be one of '{alternatives}'.")
+    else:
+        return statsmodels_alternatives_encoding[alternative]
 
 
 def check_target_type(
@@ -125,10 +143,10 @@ def get_sample_size(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -141,6 +159,7 @@ def get_sample_size(
         Minimal sample size
 
     """
+    alternative: str = check_encode_alternative(alternative)
     power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_effect = stabilize_effect(
         eff=eff, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
@@ -187,10 +206,10 @@ def get_minimal_determinable_effect(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -203,9 +222,15 @@ def get_minimal_determinable_effect(
         Minimal effect which we can find
 
     """
+    alternative: str = check_encode_alternative(alternative)
     power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_mde = power_class.solve_power(
-        effect_size=None, nobs1=sample_size, alpha=alpha, power=1 - beta, ratio=groups_ratio, alternative=alternative
+        effect_size=None,
+        nobs1=sample_size,
+        alpha=alpha,
+        power=1 - beta,
+        ratio=groups_ratio,
+        alternative=alternative,
     )
     mde = destabilize_effect(stabilized_mde, mean, std, target_type, stabilizing_method)
     return mde
@@ -242,10 +267,10 @@ def get_power(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -257,6 +282,7 @@ def get_power(
     power : float
         Power effect with fixed size and effect
     """
+    alternative: str = check_encode_alternative(alternative)
     power_class = stats.power.TTestIndPower() if target_type == "non-binary" else stats.power.NormalIndPower()
     stabilized_effect = stabilize_effect(
         eff=effect, mean=mean, std=std, target_type=target_type, stabilizing_method=stabilizing_method
@@ -306,10 +332,10 @@ def get_table_sample_size(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -381,10 +407,10 @@ def design_groups_size(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -440,10 +466,10 @@ def get_minimal_effects_table(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -522,10 +548,10 @@ def design_effect(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -590,10 +616,10 @@ def get_power_table(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -673,10 +699,10 @@ def design_power(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.

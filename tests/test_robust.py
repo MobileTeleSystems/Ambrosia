@@ -42,7 +42,7 @@ def test_robust(tail, column_names, alpha, transf_name, data_nonlin_var, robust_
     col_mean: float = transformed_data[column_names].mean()
     col_std: float = transformed_data[column_names].std()
     moments: np.ndarray = robust_moments.loc[transf_name].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.000001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.000001)
 
 
 @pytest.mark.unit
@@ -61,7 +61,7 @@ def test_robust_load_store(data_nonlin_var, robust_moments):
     col_mean: float = transformed_data["feature_2"].mean()
     col_std: float = transformed_data["feature_2"].std()
     moments: np.ndarray = robust_moments.loc["robust_both_0.05_feature_2after1"].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.000001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.000001)
 
 
 @pytest.mark.smoke
@@ -92,7 +92,7 @@ def test_iqr(column_names, transf_name, data_nonlin_var, robust_moments):
     col_mean: float = transformed_data[column_names].mean()
     col_std: float = transformed_data[column_names].std()
     moments: np.ndarray = robust_moments.loc[transf_name].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.000001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.000001)
 
 
 @pytest.mark.unit
@@ -110,4 +110,4 @@ def test_iqr_load_store(data_nonlin_var, robust_moments):
     transformed_data = loaded_iqr.transform(data_nonlin_var, inplace=False)
     col_mean, col_std = transformed_data["feature_2"].mean(), transformed_data["feature_2"].std()
     moments: np.ndarray = robust_moments.loc["iqr_feature_2after1"].values
-    assert np.isclose(np.array([col_mean, col_std]), moments, atol=0.000001).all()
+    assert np.allclose(np.array([col_mean, col_std]), moments, atol=0.000001)

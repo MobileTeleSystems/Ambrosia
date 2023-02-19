@@ -407,10 +407,10 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             Ratio between two groups.
             Acceptable only for ``"theory"`` method!
         alternative : str, default: ``"two-sided"``
-            Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-            or ``"smaller"``.
-            ``"larger"`` - if effect is positive.
-            ``"smaller"`` - if effect is negative.
+            Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+            or ``"less"``.
+            ``"greater"`` - if effect is positive.
+            ``"less"`` - if effect is negative.
             Acceptable only for ``"theory"`` method!
         stabilizing_method : str, default: ``"asin"``
             Effect trasformation. Can be ``"asin"`` and ``"norm"``.
@@ -530,10 +530,10 @@ def design(
         Ratio between two groups.
         Acceptable only for ``"theory"`` method!
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
         Acceptable only for ``"theory"`` method!
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
@@ -593,10 +593,10 @@ def design_binary_size(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -674,10 +674,10 @@ def design_binary_effect(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -721,7 +721,7 @@ def design_binary_power(
     prob_a: float,
     sizes: types.SampleSizeType,
     effects: types.EffectType,
-    first_type_errors: types.StatErrorType = 0.05,
+    first_type_errors: types.StatErrorType = (0.05,),
     method: str = "theory",
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
@@ -741,7 +741,7 @@ def design_binary_power(
     effects : EffectType
         List or single value of relative effects.
         For example: ``1.05``, ``[1.05, 1.2]``.
-    first_type_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``(0.05,)``
        I type error bounds
        P (detect difference for equal) < alpha.
     method: str, default: ``"theory"``
@@ -751,10 +751,10 @@ def design_binary_power(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -772,13 +772,15 @@ def design_binary_power(
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
+    if isinstance(first_type_errors, float):
+        first_type_errors = [first_type_errors]
     if method == "theory":
         return theory_pkg.get_power_table(
             mean=prob_a,
             std=None,
             sample_sizes=sizes,
             effects=effects,
-            first_errors=(first_type_errors,),
+            first_errors=first_type_errors,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
@@ -788,7 +790,7 @@ def design_binary_power(
         return bin_pkg.get_table_power_on_size_and_delta(
             p_a=prob_a,
             sample_sizes=sizes,
-            confidence_level=1 - first_type_errors,
+            first_errors=first_type_errors,
             delta_relative_values=effects,
             **kwargs,
         )
@@ -801,7 +803,7 @@ def design_binary(
     prob_a: float,
     sizes: Optional[types.SampleSizeType] = None,
     effects: Optional[types.EffectType] = None,
-    first_type_errors: types.StatErrorType = 0.05,
+    first_type_errors: types.StatErrorType = (0.05,),
     second_type_errors: types.StatErrorType = (0.2,),
     method: str = "theory",
     groups_ratio: float = 1.0,
@@ -824,7 +826,7 @@ def design_binary(
     effects : EffectType, optional
         List of single value of relative effects.
         For example: 1.05, [1.05, 1.2].
-    first_type_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``(0.05, )``
         I type error bounds
         P (detect difference for equal) < alpha.
     second_type_errors : StatErrorType, default: ``(0.2,)``
@@ -837,10 +839,10 @@ def design_binary(
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
     alternative : str, default: ``"two-sided"``
-        Alternative hypothesis, can be ``"two-sided"``, ``"larger"``
-        or ``"smaller"``.
-        ``"larger"`` - if effect is positive.
-        ``"smaller"`` - if effect is negative.
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
+        ``"greater"`` - if effect is positive.
+        ``"less"`` - if effect is negative.
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.

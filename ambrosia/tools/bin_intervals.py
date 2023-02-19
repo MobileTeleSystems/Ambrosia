@@ -448,31 +448,35 @@ def get_table_power_on_size_and_conversions(
 def get_table_power_on_size_and_delta(
     p_a: float,
     sample_sizes: Iterable[int],
-    interval_type: str = "wald",
+    first_errors: Iterable[float] = (0.05,),
     delta_values: Iterable[float] = None,
     delta_relative_values: Iterable[float] = None,
+    interval_type: str = "wald",
+    # alternative: str = "two-sided",
     amount: int = 10000,
-    confidence_level: float = 0.95,
 ) -> pd.DataFrame:
     """
     Table with power / empirical 1 type error = 1 - coverage for fixed size and effect.
 
     Parameters
     ----------
-    interval_type : str
-        interval_type for confidence interval
     p_a : Iterable[float]
         Conversion in A group
     sample_sizes : Iterable[float]
         Sizes for samples
+    first_errors : Iterable[float], default : ``(0.05,)``
+        First type error values
     delta_values : Iterable[float]
         Absolute delta values: p_a - p_b = delta
     delta_relative_values : Iterable[float]
         Relative delta values: delta_relative * p_a = p_b
+    interval_type : str
+        interval_type for confidence interval
+    alternative : str, default : ``"two-sided"``
+        Alternative for static criteria - two-sided, less, greater
+        Less means, that mean in first group less, than mean in second group
     amount : int, default : ``10000``
         Amount of generated samples for one n(trials amount), to estimate power
-    confidence_level : float, default : ``0.95``
-        Such value x, that: Pr ( delta in I ) >= x
 
     Returns
     -------
@@ -484,31 +488,37 @@ def get_table_power_on_size_and_delta(
         raise RELATIVE_ABSOLUTE_DELTA_ERROR
     if delta_values is not None:
         p_b_values: np.ndarray = p_a - np.array(delta_values)
+        grid_delta: np.ndarray = delta_values
+        delta_name: str = r"$\Delta$-absolute"
     else:
         p_b_values: np.ndarray = p_a * np.array(delta_relative_values)
+        grid_delta: np.ndarray = delta_relative_values
+        delta_name: str = r"$\delta$-relative"
     if not np.all((p_b_values >= 0) & (p_b_values <= 1)):
         raise ValueError(f"Probability of success in group B must be positive, not {p_b_values}")
-    powers_array: List[np.ndarray] = []
-    sample_a = sps.binom.rvs(n=trials, p=p_a, size=(amount, trials.shape[0]))
 
-    for p_b in p_b_values:
-        sample_b = sps.binom.rvs(n=trials, p=p_b, size=(amount, trials.shape[0]))
-        binom_kwargs = {
-            "interval_type": interval_type,
-            "a_success": sample_a,
-            "b_success": sample_b,
-            "a_trials": trials,
-            "b_trials": trials,
-            "confidence_level": confidence_level,
-        }
-        conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
-        power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
-        powers_array.append(power)
-    power_matrix = np.vstack(powers_array)
-    index = delta_values if delta_values is not None else delta_relative_values
-    table = pd.DataFrame(power_matrix, index=index, columns=sample_sizes)
-    table.index.name = r"$\Delta$-absolute" if delta_values is not None else r"$\delta$-relative"
+    values = [(round(a, ROUND_DIGITS), b) for a in first_errors for b in grid_delta]
+    table: pd.DataFrame = pd.DataFrame(
+        index=pd.MultiIndex.from_tuples(values, names=[r"$\alpha$", delta_name]),
+        columns=trials,
+    )
     table.columns.name = "sample sizes"
+    sample_a = sps.binom.rvs(n=trials, p=p_a, size=(amount, trials.shape[0]))
+    for alpha in first_errors:
+        for p_b, delta in zip(p_b_values, grid_delta):
+            sample_b = sps.binom.rvs(n=trials, p=p_b, size=(amount, trials.shape[0]))
+            binom_kwargs = {
+                "interval_type": interval_type,
+                "a_success": sample_a,
+                "b_success": sample_b,
+                "a_trials": trials,
+                "b_trials": trials,
+                "confidence_level": 1 - alpha,
+                #    "alternative": alternative,
+            }
+            conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
+            power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
+            table.loc[(alpha, delta), trials] = [str(round(power_val * 100, 1)) + "%" for power_val in power]
     table_title: str = r"$1 - \beta$: power of criterion, " + (
         r"$p_a-p_b=\Delta$" if delta_values else r"$p_a\delta=p_b$"
     )

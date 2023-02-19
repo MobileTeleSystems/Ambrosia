@@ -2,6 +2,8 @@ import contextlib
 
 import joblib
 
+from ambrosia import types
+
 
 @contextlib.contextmanager
 def tqdm_joblib(tqdm_object):
@@ -24,3 +26,12 @@ def tqdm_joblib(tqdm_object):
     finally:
         joblib.parallel.BatchCompletionCallBack = old_batch_callback
         tqdm_object.close()
+
+
+def wrap_cols(cols: types.ColumnNamesType) -> types.ColumnNamesType:
+    """
+    Handle one or number of columns as list.
+    """
+    if isinstance(cols, types.ColumnNameType):
+        cols = [cols]
+    return cols

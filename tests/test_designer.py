@@ -153,7 +153,7 @@ def test_design_function(ltv_and_retention_dataset, designer_ltv):
 @pytest.mark.parametrize("beta", [0.2, [0.1, 0.2]])
 @pytest.mark.parametrize("method", ["theory", "binary"])
 @pytest.mark.parametrize("groups_ratio", [1.0, 1.5, 2.0, 5.0])
-@pytest.mark.parametrize("alternative", ["two-sided", "larger"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater"])
 def test_design_binary_function(to_design, effects, sizes, beta, method, groups_ratio, alternative):
     """
     Design binary function smoke test

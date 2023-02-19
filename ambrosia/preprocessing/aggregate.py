@@ -21,6 +21,7 @@ import pandas as pd
 
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import AbstractFittableTransformer
+from ambrosia.tools.back_tools import wrap_cols
 
 
 class AggregatePreprocessor(AbstractFittableTransformer):
@@ -107,7 +108,7 @@ class AggregatePreprocessor(AbstractFittableTransformer):
         A private method containing aggregation parameters filling logic
         for real metrics.
         """
-        real_cols = self._wrap_cols(real_cols)
+        real_cols = wrap_cols(real_cols)
         for real_feature in real_cols:
             agg_params[real_feature] = self.real_method
 
@@ -120,7 +121,7 @@ class AggregatePreprocessor(AbstractFittableTransformer):
         A private method containing aggregation parameters filling logic
         for categorial metrics.
         """
-        categorial_cols = self._wrap_cols(categorial_cols)
+        categorial_cols = wrap_cols(categorial_cols)
         for categorial_feature in categorial_cols:
             agg_params[categorial_feature] = self.categorial_method
 
