@@ -1,45 +1,22 @@
-Preprocessing
-=============
+==================
+Data preprocessing
+==================
 
+The tools from this subsection allow to automatically perform various stages of processing experimental data 
+and save the specified configurations for repeated data transformations.
 
-.. currentmodule:: ambrosia.preprocessing
+.. admonition:: Chain preprocessing
+   :class: Tip
 
-.. autosummary::
-   :nosignatures:
+   Almost all separate data transformations are available as sequential methods of the ``Preprocessor`` class.
 
-   Preprocessor
-   AggregatePreprocessor
-   RobustPreprocessor
-   IQRPreprocessor
-   BoxCoxTransformer
-   LogTransformer
-   Cuped
-   MultiCuped
-   MLVarianceReducer
+Data preprocessing tools:
 
-.. autoclass:: ambrosia.preprocessing.Preprocessor
-   :members: aggregate, robust, iqr, boxcox, log, cuped, data, transformations
+.. toctree::
+   :maxdepth: 1
 
-.. autoclass:: ambrosia.preprocessing.AggregatePreprocessor
-   :members: run, transform, get_params_dict
-
-.. autoclass:: ambrosia.preprocessing.RobustPreprocessor
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.IQRPreprocessor
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.BoxCoxTransformer
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.LogTransformer
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.Cuped
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.MultiCuped
-   :members: fit, transform, fit_transform, store_params, load_params
-
-.. autoclass:: ambrosia.preprocessing.MLVarianceReducer
-   :members: fit, transform, fit_transform, store_params, load_params
+   aggregation
+   robust
+   simple_transformation
+   advanced_transformations
+   processor

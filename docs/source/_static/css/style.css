@@ -1,3 +1,18 @@
 svg {
     width: 100%;
 }
+
+@media(min-width:97em) {
+    html {
+        font-size: 104%
+    }
+}
+
+.strike {
+    text-decoration: line-through;
+}
+
+.bolditalic {
+    font-weight: bold;
+    font-style: italic;
+}

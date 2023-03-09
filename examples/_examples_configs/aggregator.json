@@ -1,0 +1,1 @@
+{"aggregation_params": {"watched": "sum", "sessions": "max", "gender": "simple", "platform": "mode"}, "groupby_columns": ["id", "is_holiday"]}

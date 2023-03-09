@@ -31,25 +31,8 @@ Ambrosia
 
 .. title
 
-**Ambrosia** is a Python library for A/B tests design, split and effect 
-measurement. It provides rich set of methods for conducting full 
-A/B test pipeline. 
-
-An experiment design stage is performed using metrics historical data 
-which could be processed in both forms of pandas and spark dataframes 
-with either theoretical or empirical approach. 
-
-Group split methods support different strategies and multi-group split, 
-which allows to quickly create control and test groups of interest. 
-
-Final effect measurement stage is conducted via testing tools that 
-are able to return relative and absolute effects and construct corresponding 
-confidence intervalsfor continious and binary variables. 
-Testing tools as well as design ones support significant number of 
-statistical criteria, like t-test, non-parametric, and bootstrap. 
-
-For additional A/B tests support library provides features and tools 
-for data preproccesing and experiment acceleration.
+*Ambrosia* is a Python library for A/B tests design, split and effect measurement. 
+It provides rich set of methods for conducting full experimental A/B test pipeline. 
 
 .. functional
 
@@ -59,7 +42,8 @@ Key functionality
 * Pilots design ✈
 * Multi-group split 🎳
 * Matching of new control group to the existing pilot 🎏
-* Getting the experiments result evaluation as p-value, point estimate of effect and confidence interval 🎞
+* Experiments result evaluation as p-value, point estimate of effect and confidence interval 🎞
+* Data preprocessing ✂️
 * Experiments acceleration 🎢
 
 .. documentation
@@ -75,21 +59,25 @@ and `Tutorials <https://github.com/MobileTeleSystems/Ambrosia/tree/main/examples
 Installation
 ------------
 
+You can always get the newest *Ambrosia* release using ``pip``.
 Stable version is released on every tag to ``main`` branch. 
 
 .. code:: bash
     
     pip install ambrosia 
 
-**Ambrosia requires Python 3.7+**
-
 .. usage
 
 Usage
 -----
 
-Designer 
-~~~~~~~~
+The main functionality of *Ambrosia* is contained in several core classes and methods, 
+which are separate for each stage of the experiment and very intuitive for users. 
+
+Below is a brief overview example of using a set of three classes to conduct some simple experiment.
+
+
+**Designer**
 
 .. code:: python
 
@@ -98,8 +86,7 @@ Designer
     designer.run('size') 
 
 
-Splitter
-~~~~~~~~
+**Splitter**
 
 .. code:: python
 
@@ -108,8 +95,7 @@ Splitter
     splitter.run(groups_size=500, method='simple') 
 
 
-Tester 
-~~~~~~
+**Tester**
 
 .. code:: python
 
@@ -162,8 +148,8 @@ To remove virtual environment run
 
 .. contributors
 
-Communication
--------------
+Authors
+-------
 
 **Developers and evangelists**:
 

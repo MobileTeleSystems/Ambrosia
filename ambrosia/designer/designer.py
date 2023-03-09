@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 """
 Experiment design methods.
 
@@ -48,10 +49,11 @@ BINARY_DESIGN_METHODS: List[str] = ["theory", "binary"]
 
 class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     """
-    Unit for experiments and pilots design.
+    Unit for experiments and pilots parameters design.
 
     Enables to design missing experiment parameters using historical data.
     The main related to each other designable parameters for a single metric are:
+
         - Effect (Minimal Detectible Effect):
             old_mean_metric_value * effect_value = new_mean_metric_value
         - Sample size:
@@ -466,7 +468,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
 
 def load_from_config(yaml_config: str, loader: type = yaml.Loader) -> Designer:
     """
-    Create Designer class instance from yaml config.
+    Restore a ``Designer`` class instance from a yaml config.
 
     For yaml_config you can pass file name with config,
     it must ends with .yaml, for example: "config.yaml".
@@ -491,7 +493,12 @@ def design(
     **kwargs,
 ) -> types.DesignerResult:
     """
+    Function wrapper around the ``Designer`` class.
+
     Make experiment design based on historical data using passed arguments.
+
+    Creates an instance of the ``Designer`` class internally and execute
+    run method with corresponding arguments.
 
     Parameters
     ----------
@@ -812,7 +819,8 @@ def design_binary(
     **kwargs,
 ) -> pd.DataFrame:
     """
-    Design desired parameter for binary metrics.
+    Design of experiment parameters for binary metrics based
+    on a known conversion value.
 
     Parameters
     ----------

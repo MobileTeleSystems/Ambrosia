@@ -29,7 +29,7 @@ from ambrosia.tools.back_tools import wrap_cols
 
 class BoxCoxTransformer(AbstractFittableTransformer):
     """
-    Unit for a Box-Cox transformation of the pandas data.
+    Unit for a Box-Cox transformation of the data.
 
     A Box Cox transformation helps to transform non-normal dependent variables
     into a normal shape. All variables values must be positive.
@@ -228,7 +228,7 @@ class BoxCoxTransformer(AbstractFittableTransformer):
 
 class LogTransformer(AbstractFittableTransformer):
     """
-    Unit for a logarithmic transformation of the pandas data.
+    Unit for a logarithmic transformation of the data.
 
     A logarithmic transformation helps to transform some metrics distributions
     into a more normal shape and reduce the variance.

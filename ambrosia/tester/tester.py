@@ -56,7 +56,7 @@ AVAILABLE_MULTITEST_CORRECTIONS: List[str] = ["bonferroni"]
 
 class Tester(ABToolAbstract):
     """
-    Unit for experimental data test and evaluation.
+    Unit for evaluating the results of experiments.
 
     The experiment evaluation result contains:
         - Pvalue for the selected criterion
@@ -602,7 +602,9 @@ def test(
     **kwargs,
 ) -> types.TesterResult:
     """
-    Standalone function used to get the results of an experiment.
+    Function wrapper around the ``Tester`` class.
+
+    Apply on the experimental data to get the results of an experiment.
 
     Creates an instance of the ``Tester`` class internally and execute
     run method with corresponding arguments.
