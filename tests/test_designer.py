@@ -105,7 +105,7 @@ def test_every_type_run(to_design, method, effects, sizes, designer_ltv):
     if method != "empiric":
         designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes)
     else:
-        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, parallel=False, bs_samples=10)
+        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, n_jobs=1, bs_samples=10)
 
 
 @pytest.mark.unit

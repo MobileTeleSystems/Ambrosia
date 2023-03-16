@@ -202,7 +202,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             self.__size = sizes
 
     def set_effects(self, effects: types.EffectType) -> None:
-        if isinstance(effects, float):
+        if isinstance(effects, (float, int)):
             self.__effect = [effects]
         else:
             self.__effect = effects
@@ -306,8 +306,9 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             kwargs["group_sizes"] = args[SIZE]
             kwargs["betas"] = np.array(args["beta"])
         elif label == POWER:
+            groups_ratio: float = kwargs.pop("groups_ratio") if "groups_ratio" in kwargs else 1.0
             kwargs["sample_sizes_a"] = args[SIZE]
-            kwargs["sample_sizes_b"] = args[SIZE]
+            kwargs["sample_sizes_b"] = [int(groups_ratio * size) for size in args[SIZE]]
             kwargs["effects"] = args[EFFECT]
         return Designer.__dataframe_handler(EmpiricHandler(), label, **kwargs)
 
@@ -405,13 +406,11 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             either as a number, this parameter could used to toggle.
         groups_ratio : float, default: ``1.0``
             Ratio between two groups.
-            Acceptable only for ``"theory"`` method!
         alternative : str, default: ``"two-sided"``
             Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
             or ``"less"``.
             ``"greater"`` - if effect is positive.
             ``"less"`` - if effect is negative.
-            Acceptable only for ``"theory"`` method!
         stabilizing_method : str, default: ``"asin"``
             Effect trasformation. Can be ``"asin"`` and ``"norm"``.
             For non-binary metrics: only ``"norm"`` is accceptable.
@@ -425,7 +424,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             Table or dictionary with the results of parameter design for each
             metric.
         """
-        if isinstance(effects, float):
+        if isinstance(effects, (float, int)):
             effects = [effects]
         if isinstance(sizes, int):
             sizes = [sizes]
@@ -444,7 +443,6 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         }
 
         designable_parameters: List[str] = [SIZE, EFFECT, POWER]
-
         if to_design == SIZE:
             arguments_choice[EFFECT] = (self.__effect, effects)
             arguments_choice["beta"] = (self.__beta, second_type_errors)
@@ -528,13 +526,11 @@ def design(
         either as a number, this parameter could used to toggle.
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
-        Acceptable only for ``"theory"`` method!
     alternative : str, default: ``"two-sided"``
         Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
         or ``"less"``.
         ``"greater"`` - if effect is positive.
         ``"less"`` - if effect is negative.
-        Acceptable only for ``"theory"`` method!
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -610,7 +606,7 @@ def design_binary_size(
     result_table : pd.DataFrame
         Table with results of design.
     """
-    if isinstance(effects, float):
+    if isinstance(effects, (float, int)):
         effects = [effects]
     if isinstance(first_type_errors, float):
         first_type_errors = [first_type_errors]
@@ -698,12 +694,14 @@ def design_binary_effect(
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
     if method == "theory":
+        as_numeric: bool = kwargs["as_numeric"] if "as_numeric" in kwargs else False
         return theory_pkg.get_minimal_effects_table(
             mean=prob_a,
             std=None,
             sample_sizes=sizes,
             first_errors=first_type_errors,
             second_errors=second_type_errors,
+            as_numeric=as_numeric,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
@@ -711,7 +709,11 @@ def design_binary_effect(
         )
     elif method == "binary":
         return bin_pkg.get_table_effect_on_sample_size(
-            p_a=prob_a, sample_sizes=sizes, first_errors=first_type_errors, second_errors=second_type_errors, **kwargs
+            p_a=prob_a,
+            sample_sizes=sizes,
+            first_errors=first_type_errors,
+            second_errors=second_type_errors,
+            **kwargs,
         )
     else:
         raise ValueError(f"Choose valid method from {BINARY_DESIGN_METHODS}, got {method}")
@@ -768,19 +770,21 @@ def design_binary_power(
     result_table : pd.DataFrame
         Table with results of design.
     """
-    if isinstance(effects, float):
+    if isinstance(effects, (int, float)):
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
     if isinstance(first_type_errors, float):
         first_type_errors = [first_type_errors]
     if method == "theory":
+        as_numeric: bool = kwargs["as_numeric"] if "as_numeric" in kwargs else False
         return theory_pkg.get_power_table(
             mean=prob_a,
             std=None,
             sample_sizes=sizes,
             effects=effects,
             first_errors=first_type_errors,
+            as_numeric=as_numeric,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
