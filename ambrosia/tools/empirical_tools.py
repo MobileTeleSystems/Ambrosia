@@ -12,11 +12,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
 from typing import Callable, Dict, Iterable, List, Optional, Union
 
 import numpy as np
-from joblib import Parallel, delayed
-from tqdm.auto import tqdm
+from joblib import Parallel, delayed, parallel_backend
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.stat_criteria as criteria_pkg
@@ -98,7 +98,7 @@ def inject_effect(
     if modeling_method == "constant":
         modified_metric_vals[sample_size_a:, :] = effect * modified_metric_vals[sample_size_a:, :]
     elif modeling_method == "shift":
-        modified_metric_vals[sample_size_a:, :] += (effect - 1) * mean
+        modified_metric_vals[sample_size_a:, :] = modified_metric_vals[sample_size_a:, :] + (effect - 1) * mean
     elif modeling_method == "normal":
         effect_delta = (effect - 1) * mean
         effect_std = modified_metric_vals[sample_size_a:, :].std(ddof=1) / variation_factor
@@ -112,14 +112,15 @@ def inject_effect(
     return modified_metric_vals
 
 
-def stat_criterion_power(
+def estim_stat_criterion_power(
     sampled_metric_vals: np.ndarray,
     sample_size_a: int,
     criterion: types.CompoundCriterionType = "ttest",
     alpha: float = 0.05,
+    **kwargs,
 ) -> float:
     """
-    Power of statistic criterion.
+    Estimate power of statistical criterion.
 
     Parameters
     ----------
@@ -131,8 +132,10 @@ def stat_criterion_power(
     criterion : Union[Callable[[np.ndarray, np.ndarray], CriterionResultType], str], default: ``"ttest"``
         Statistical criterion - function f: f(group A, group B) = (statistic, p_value)
         or name of criterion as string, for example 'ttest'
-    apha : float, default: ``0.05``
+    alpha : float, default: ``0.05``
         First type error bound, 1 - alpha: correctness
+    **kwargs : Dict
+        Keyword arguments for statistical criterion.
 
     Returns
     -------
@@ -148,7 +151,7 @@ def stat_criterion_power(
         raise ValueError(
             f"Choose correct criterion name from {list(AVAILABLE_AB_CRITERIA)} or pass correct custom class"
         )
-    power: float = np.mean(criterion().calculate_pvalue(a_group_metrics, b_group_metrics) <= alpha)
+    power: float = np.mean(criterion().calculate_pvalue(b_group_metrics, a_group_metrics, **kwargs) <= alpha)
     return power
 
 
@@ -164,15 +167,17 @@ def get_bs_stat(sample: np.ndarray, stat: str = "mean", N: int = 1000, random_se
         Name of statistic to be calculated
     N : int, default: ``1000``
        Bootstrap size
+    random_seed : int, optional
+        A seed for the deterministic outcome of random processes.
 
     Returns
     -------
     bs_stat : np.ndarray
-        Statistic calculated via booststrap
+        Statistic calculated via bootstrap
     """
     rng = np.random.default_rng(random_seed)
     permissible_string_statistics: List[str] = ["mean", "median"]
-    bs_samples: np.ndaray = rng.choice(sample, replace=True, size=(len(sample), N))
+    bs_samples: np.ndarray = rng.choice(sample, replace=True, size=(len(sample), N))
     if stat == "mean":
         bs_stat: np.ndarray = np.mean(bs_samples, axis=0)
     elif stat == "median":
@@ -189,6 +194,7 @@ def get_bs_sample_stat(
     N: int = 1000,
     stat: str = "mean",
     random_seed: Optional[int] = None,
+    alternative: str = "two-sided",
 ) -> bool:
     """
     Evaluate if difference in groups is significant.
@@ -207,6 +213,11 @@ def get_bs_sample_stat(
        Bootstrap size
     stat : str, default: ``"mean"``
           Name of calculated statistic, for example 'mean'
+    random_seed : int, optional
+        A seed for the deterministic outcome of random processes.
+    alternative : str, default: ``"two-sided"``
+        Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
+        or ``"less"``.
 
     Returns
     -------
@@ -219,8 +230,17 @@ def get_bs_sample_stat(
     bs_stat_a = get_bs_stat(sample[:sample_size_a], stat=stat, N=N, random_seed=seed_sequence[0])
     bs_stat_b = get_bs_stat(sample[sample_size_a:], stat=stat, N=N, random_seed=seed_sequence[1])
     bs_stat_diff = bs_stat_b - bs_stat_a
-    left_side, right_side = np.percentile(bs_stat_diff, [100 * alpha / 2.0, 100 * (1 - alpha / 2.0)])
-    overlap = not left_side <= 0 <= right_side
+    if alternative == "less":
+        right_side = np.percentile(bs_stat_diff, 1 - alpha)
+        overlap = right_side <= 0
+    elif alternative == "greater":
+        left_side = np.percentile(bs_stat_diff, alpha)
+        overlap = left_side >= 0
+    elif alternative == "two-sided":
+        left_side, right_side = np.percentile(bs_stat_diff, [100 * alpha / 2.0, 100 * (1 - alpha / 2.0)])
+        overlap = not left_side <= 0 <= right_side
+    else:
+        raise ValueError(f"Incorrect alternative value - {alternative}, choose from two-sided, less, greater")
     return overlap
 
 
@@ -231,8 +251,8 @@ def make_bootstrap(
     N: int = 1000,
     stat: str = "mean",
     random_seed: Optional[int] = None,
-    use_tqdm: bool = False,
-    parallel: bool = False,
+    n_jobs: int = 1,
+    backend: str = "threading",
     verbose: bool = False,
 ) -> float:
     """
@@ -251,10 +271,12 @@ def make_bootstrap(
        Number of bootstraps.
     stat : str, default: ``"mean"``
         Statistics to be calculated.
-    use_tqdm : bool, default: ``False``
-        Whether to use tqdm bar progress.
-    parallel : bool, default: ``False``
-        Whether to use parallel calculations.
+    random_seed : int, optional
+        A seed for the deterministic outcome of random processes.
+    n_jobs : int, default: ``1``
+        Amount of threads/workers for parallel.
+    backend : str, default: ``"threading"``
+        Type of backend for joblib parallel computation.
     verbose : bool, default: ``False``
         Whether to make logging.
 
@@ -267,8 +289,8 @@ def make_bootstrap(
     rng = np.random.SeedSequence(random_seed)
     seed_sequence: np.ndarray = rng.generate_state(num_samples)
     iterator = zip(range(num_samples), seed_sequence)
-    if parallel:
-        results_parallel = Parallel(n_jobs=64, verbose=verbose, backend="multiprocessing")(
+    with parallel_backend(backend=backend, n_jobs=n_jobs):
+        results_parallel = Parallel(verbose=verbose)(
             delayed(get_bs_sample_stat)(
                 sample=sampled_metric_vals[:, sample_num],
                 sample_size_a=sample_size_a,
@@ -279,24 +301,74 @@ def make_bootstrap(
             )
             for sample_num, seed in iterator
         )
-        test_result = np.mean(results_parallel)
+    return np.mean(results_parallel)
+
+
+def eval_error(
+    sampled_metric_vals: np.ndarray,
+    sample_size_a: int,
+    alpha: float,
+    mode: str = "ttest",
+    stat: str = "mean",
+    bootstrap_size: int = 1000,
+    random_seed: Optional[int] = None,
+    n_jobs: int = 1,
+    verbose: bool = False,
+    **kwargs,
+) -> float:
+    """
+    Evaluate I type error/power of the experiment.
+
+    Parameters
+    ----------
+    sampled_metric_vals : np.ndarray
+        Samples of A/B groups: |group A values|group B values|.
+    sample_size_a : int
+        Size of  the group A in ``sampled_metric_vals``, i.e.
+        first ``sample_size_a`` elements correspond to the group A.
+    alpha : float
+        First type error bound, 1 - alpha: correctness.
+    mode : str, default: ``"ttest"``
+        Statistical criterion, for example ``'ttest'``.
+    stat : str, default: ``mean``
+        Statistic to be calculated for sample groups during a bootstrap.
+    bootstrap_size : int, default: ``1000``
+        Number of bootstrap of A/B pairs.
+    random_seed : int, optional
+        A seed for the deterministic outcome of random processes.
+    n_jobs : int, default: ``1``
+        Amount of threads/workers for parallel.
+    verbose : bool, default: ``False``
+        Whether use logging.
+    **kwargs : Dict
+        Keyword arguments for statistical criterion.
+
+    Returns
+    -------
+    error : float
+        Second type error estimation or correctness, i.e.
+        1 - P_{A=B} (criterion is completed) - correctness
+        P_{A!=B} (criterion is completed) - second type error.
+    """
+    not_bootstrap_criteria: List[str] = ["ttest", "ttest_rel", "mw", "wilcoxon"]
+    if mode in not_bootstrap_criteria:
+        power: float = estim_stat_criterion_power(
+            sampled_metric_vals, sample_size_a, criterion=mode, alpha=alpha, **kwargs
+        )
+    elif mode == "bootstrap":
+        power: float = make_bootstrap(
+            sampled_metric_vals,
+            sample_size_a,
+            alpha,
+            N=bootstrap_size,
+            stat=stat,
+            random_seed=random_seed,
+            n_jobs=n_jobs,
+            verbose=verbose,
+        )
     else:
-        over_group_statistic = []
-        rng = range(num_samples)
-        if use_tqdm:
-            iterator = tqdm(iterator)
-        for sample_num, seed in iterator:
-            overlap = get_bs_sample_stat(
-                sample=sampled_metric_vals[:, sample_num],
-                sample_size_a=sample_size_a,
-                alpha=alpha,
-                N=N,
-                stat=stat,
-                random_seed=seed,
-            )
-            over_group_statistic.append(overlap)
-        test_result = np.mean(over_group_statistic)
-    return test_result
+        raise ValueError(f"Criterion {mode} is not found, choose from {not_bootstrap_criteria} or 'bootstrap'")
+    return power
 
 
 class BootstrapStats:
@@ -406,7 +478,7 @@ class BootstrapStats:
         confidence_level: Union[float, Iterable[float]], default: ``0.95``
             Bounds for error, that is
             Pr (mean(metric) not in interval) <= alpha
-        alternative : str, defaulte: ``"two-sided"``
+        alternative : str, default: ``"two-sided"``
                 Alternative for static criteria - two-sided, less, greater
                 Less means, that mean in first group less, than mean in second group
         Returns
