@@ -218,6 +218,17 @@ class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         self.set_fit_columns(fit_columns)
         self.set_strat_columns(strat_columns)
 
+    def __getstate__(self):
+        """
+        Get the state of the object to serialize.
+        """
+        return dict(
+            id_column=self.__id_column,
+            groups_size=self.__groups_size,
+            fit_columns=self.__fit_columns,
+            strat_columns=self.__strat_columns,
+        )
+
     @classmethod
     def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
         kwargs = loader.construct_mapping(node)

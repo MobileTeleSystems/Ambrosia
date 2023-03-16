@@ -246,6 +246,19 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         self.set_dataframe(dataframe)
         self.set_method(method)
 
+    def __getstate__(self):
+        """
+        Get the state of the object to serialize.
+        """
+        return dict(
+            effects=self.__effect,
+            sizes=self.__size,
+            first_type_errors=self.__alpha,
+            second_type_errors=self.__beta,
+            metrics=self.__metrics,
+            method=self.__method,
+        )
+
     @classmethod
     def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
         kwargs = loader.construct_mapping(node)
