@@ -25,6 +25,8 @@ from ambrosia import types
 
 RELATIVE_ABSOLUTE_DELTA_ERROR = ValueError("Choose relative or absolute delta, not both")
 ROUND_DIGITS: int = 3
+ROUND_DIGITS_TABLE: int = 3
+ROUND_DIGITS_PERCENT: int = 1
 
 
 class BinomTwoSampleCI(ABC):
@@ -454,6 +456,7 @@ def get_table_power_on_size_and_delta(
     interval_type: str = "wald",
     # alternative: str = "two-sided",
     amount: int = 10000,
+    as_numeric: bool = False,
 ) -> pd.DataFrame:
     """
     Table with power / empirical 1 type error = 1 - coverage for fixed size and effect.
@@ -477,6 +480,10 @@ def get_table_power_on_size_and_delta(
         Less means, that mean in first group less, than mean in second group
     amount : int, default : ``10000``
         Amount of generated samples for one n(trials amount), to estimate power
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
+        Works only for relative values of power.
 
     Returns
     -------
@@ -518,11 +525,11 @@ def get_table_power_on_size_and_delta(
             }
             conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
             power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
-            table.loc[(alpha, delta), trials] = [str(round(power_val * 100, 1)) + "%" for power_val in power]
-    table_title: str = r"$1 - \beta$: power of criterion, " + (
-        r"$p_a-p_b=\Delta$" if delta_values else r"$p_a\delta=p_b$"
-    )
-    table = table.style.set_caption(table_title)
+            if as_numeric:
+                power = [round(power_val, ROUND_DIGITS_TABLE) for power_val in power]
+            else:
+                power = [str(round(power_val * 100, ROUND_DIGITS_PERCENT)) + "%" for power_val in power]
+            table.loc[(alpha, delta), trials] = power
     return table
 
 
@@ -629,9 +636,10 @@ def iterate_for_delta(
     p_a: float,
     amount: int,
     delta_type: str,
+    as_numeric: bool = False,
 ) -> pd.DataFrame:
     """
-    Helps find effect for different params
+    Helps find effect for different params.
     """
     values = [(round(a, ROUND_DIGITS), round(b, ROUND_DIGITS)) for a in first_errors for b in second_errors]
     table: pd.DataFrame = pd.DataFrame(
@@ -651,8 +659,10 @@ def iterate_for_delta(
                     power=power,
                 )
                 if delta is not None and delta_type == "relative":
-                    delta = str(round(abs(delta) / p_a * 100, 2)) + "%"
-
+                    if as_numeric:
+                        delta = round(abs(delta) / p_a, ROUND_DIGITS_TABLE) + 1
+                    else:
+                        delta = str(round(abs(delta) / p_a * 100, ROUND_DIGITS_PERCENT)) + "%"
                 table.loc[(alpha, second_error), trials] = delta
     return table
 
@@ -664,7 +674,8 @@ def get_table_effect_on_sample_size(
     sample_sizes: Iterable[int] = (100,),
     p_a: float = 0.5,
     amount: int = 10000,
-    delta_type: str = "absolute",
+    delta_type: str = "relative",
+    as_numeric: bool = False,
 ) -> pd.DataFrame:
     """
     Table for effects with given sample sizes and erros.
@@ -685,7 +696,11 @@ def get_table_effect_on_sample_size(
     sample_sizes : Iterable[int], default : ``(100,)``
         Sample sizes for A/B group
     delta_type : str, default : ``"absolute``
-        absolute or relative, if relative give effect if percent: |delta| / p_a
+        absolute or relative, if relative gives effect in percents: |delta| / p_a
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
+        Works only for relative values of effect.
 
     Returns
     -------
@@ -702,15 +717,8 @@ def get_table_effect_on_sample_size(
     delta_types: List[str] = ["absolute", "relative"]
     if delta_type not in delta_types:
         raise ValueError(f"Delta type must be absolute relative, not {delta_type}")
-
     table: pd.DataFrame = iterate_for_delta(
-        interval_type,
-        first_errors,
-        second_errors,
-        sample_sizes,
-        p_a,
-        amount,
-        delta_type,
+        interval_type, first_errors, second_errors, sample_sizes, p_a, amount, delta_type, as_numeric
     )
     table.columns.name = "Sample size"
     return table
