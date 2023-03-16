@@ -269,7 +269,6 @@ def get_empirical_table_power(
         sample_sizes_b = np.copy(sample_sizes_a)
     elif isinstance(sample_sizes_b, List):
         sample_sizes_b = np.array(sample_sizes_b)
-    dataframe, int_metrics = back_tools.cast_int_cols_to_float(dataframe, metrics)
     parameters, emprical_errors = get_errors(
         dataframe=dataframe,
         metrics=metrics,
