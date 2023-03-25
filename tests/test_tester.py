@@ -8,6 +8,17 @@ from ambrosia.tester import Tester, test
 from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
 
 
+def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
+    if a == np.inf and b == np.inf:
+        return True
+    if a == -np.inf and b == -np.inf:
+        return True
+    return abs(a - b) < eps
+
+def check_eq_int(i1, i2) -> bool:
+    return check_eq(i1[0], i2[0]) and check_eq(i1[1], i2[1])
+
+
 @pytest.mark.smoke
 def test_instance():
     """
@@ -292,3 +303,12 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
     assert pvalue_center > pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr)
+
+
+@pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
+def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str):
+    res_pandas = tester_on_ltv_retention.run("absolute", "theory", as_table=False, alternative=alternative)
+    res_spark = tester_spark_ltv_ret.run("absolute", "theory", as_table=False, alternative=alternative)
+    for j in range(len(res_pandas)):
+        assert check_eq(res_pandas[j]['pvalue'], res_spark[j]['pvalue'])
+        assert check_eq_int(res_pandas[j]["confidence_interval"], res_spark[j]["confidence_interval"])

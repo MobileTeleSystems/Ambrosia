@@ -24,6 +24,7 @@ from yaml import YAMLObjectMetaclass
 
 from ambrosia import types
 from ambrosia.tools import log
+import ambrosia.tools.pvalue_tools as pvalue_pkg
 
 AVAILABLE: List[str] = ["pandas", "spark"]
 DATA: str = "dataframe"
@@ -225,6 +226,17 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
         log.info_log(f"Variance transformation {old_variance:.4f} ===> {new_variance:.4f}")
 
 
+def choose_on_table(alternatives: List[Any], dataframe) -> Any:
+    '''
+    alternatives: [alternative_pandas, alternative_spark, ...]
+    '''
+    if isinstance(dataframe, pd.DataFrame):
+        return alternatives[0]
+    elif isinstance(dataframe, types.SparkDataFrame):
+        return alternatives[1]
+    raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
+
+
 class DataframeHandler:
     @staticmethod
     def _handle_cases(__func_pandas: Callable, __func_spark: Callable, *args, **kwargs):
@@ -232,12 +244,8 @@ class DataframeHandler:
         Helps handle cases with different types of dataframe in kwargs,
         available types - pandas, spark.
         """
-        if isinstance(kwargs[DATA], pd.DataFrame):
-            return __func_pandas(*args, **kwargs)
-        elif isinstance(kwargs[DATA], types.SparkDataFrame):
-            return __func_spark(*args, **kwargs)
-        else:
-            raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
+        __func = choose_on_table([__func_pandas, __func_spark], kwargs[DATA])
+        return __func(*args, **kwargs)
 
     @staticmethod
     def _handle_on_table(
@@ -247,12 +255,8 @@ class DataframeHandler:
         Helps handle cases with different types of dataframe as additional variable,
         available types - pandas, spark.
         """
-        if isinstance(variable, pd.DataFrame):
-            return __func_pandas(*args, **kwargs)
-        elif isinstance(variable, types.SparkDataFrame):
-            return __func_spark(*args, **kwargs)
-        else:
-            raise TypeError(f'Type of table must be one of {", ".join(AVAILABLE)}')
+        __func = choose_on_table([__func_pandas, __func_spark], variable)
+        return __func(*args, **kwargs)
 
 
 class SimpleDesigner(ABC, DataframeHandler):
@@ -394,6 +398,11 @@ class ABStatCriterion(StatCriterion):
         self, group_a: Iterable[float], group_b: Iterable[float], alpha: types.StatErrorType, effect_type: str, **kwargs
     ) -> List[Tuple]:
         pass
+    
+    def _make_ci(self, left_ci: np.ndarray, right_ci: np.ndarray, alternative: str) -> List:
+        left_ci, right_ci = pvalue_pkg.choose_from_bounds(left_ci, right_ci, alternative)
+        conf_intervals = list(zip(left_ci, right_ci))
+        return conf_intervals
 
     def get_results(
         self,
@@ -407,5 +416,6 @@ class ABStatCriterion(StatCriterion):
             "first_type_error": alpha,
             "pvalue": self.calculate_pvalue(group_a, group_b, **kwargs),
             "effect": self.calculate_effect(group_a, group_b, effect_type),
-            "confidence_interval": self.calculate_conf_interval(group_a, group_b, alpha, effect_type, **kwargs),
+            "confidence_interval": self.calculate_conf_interval(group_a, group_b,
+                                                                alpha=alpha, effect_type=effect_type, **kwargs),
         }

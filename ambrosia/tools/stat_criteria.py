@@ -271,3 +271,4 @@ class ShapiroCriterion(StatCriterion):
     """
     Unit for Shapiro-Wilk test.
     """
+    pass

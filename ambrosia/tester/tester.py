@@ -39,6 +39,7 @@ import ambrosia.tools.empirical_tools as empirical_pkg
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.stat_criteria as criteria_pkg
 from ambrosia import types
+from .handlers import filter_spark_and_make_groups, TheoreticalTesterHandler
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, ABToolAbstract, DataframeHandler, StatCriterion
 
 from .binary_result_evaluation import binary_absolute_result, binary_relative_result
@@ -225,7 +226,7 @@ class Tester(ABToolAbstract):
             "id_column": id_column,
         }
         self.__experiment_results = DataframeHandler()._handle_cases(
-            Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+            Tester.__filter_data, filter_spark_and_make_groups, **__filtering_kwargs,
         )
 
     def __init__(
@@ -287,11 +288,6 @@ class Tester(ABToolAbstract):
             group_label: dataframe[dataframe[column_groups] == group_label] for group_label in group_labels
         }
         return experiment_results
-
-    def __filter_spark_data(self):
-        """
-        Function to handle setting of Spark data.
-        """
 
     @staticmethod
     def __bootstrap_result(
@@ -355,7 +351,7 @@ class Tester(ABToolAbstract):
         Function to handle the theoretical approach to testing.
         """
         criterion: Union[str, StatCriterion] = criterion if criterion is not None else "ttest"
-        if isinstance(criterion, str) & (criterion in AVAILABLE_AB_CRITERIA):
+        if isinstance(criterion, str) and (criterion in AVAILABLE_AB_CRITERIA):
             criterion = AVAILABLE_AB_CRITERIA[criterion]
         elif not (hasattr(criterion, "get_results") and callable(criterion.get_results)):
             raise ValueError(
@@ -368,6 +364,7 @@ class Tester(ABToolAbstract):
         """
         Function to handle run method on pandas dataframes.
         """
+        # TODO: add methods to enum
         accepted_methods: List[str] = ["theory", "empiric", "binary"]
         if method not in accepted_methods:
             raise ValueError(f'Choose method from {", ".join(accepted_methods)}')
@@ -376,14 +373,17 @@ class Tester(ABToolAbstract):
             a_values: np.ndarray = args["data_a_group"][metric].values
             b_values: np.ndarray = args["data_b_group"][metric].values
             if method == "theory":
-                sub_result = Tester.__theory_handler(
-                    a_values,
-                    b_values,
-                    np.array(args["alpha"]),
-                    effect_type=args["effect_type"],
-                    criterion=args["criterion"],
-                    **kwargs,
-                )
+                # TODO: Make it SolverClass ~ method
+                # solver = SolverClass(...)
+                # sub_result = solver.solve()
+                solver = TheoreticalTesterHandler(args["data_a_group"],
+                                                  args["data_b_group"],
+                                                  column=metric,
+                                                  alpha=np.array(args["alpha"]),
+                                                  effect_type=args["effect_type"],
+                                                  criterion=args["criterion"],
+                                                  **kwargs)
+                sub_result = solver.solve()
             elif method == "empiric":
                 sub_result = Tester.__bootstrap_result(
                     a_values, b_values, np.array(args["alpha"]), effect_type=args["effect_type"], **kwargs
@@ -408,6 +408,7 @@ class Tester(ABToolAbstract):
         """
         Apply first stage of multitest correction for first type errors.
         """
+        alphas = np.array(alphas)
         if method == "bonferroni":
             alphas /= hypothesis_num
         return alphas
@@ -528,6 +529,8 @@ class Tester(ABToolAbstract):
             first_errors = [first_errors]
         if "alternative" in kwargs:
             pvalue_pkg.check_alternative(kwargs["alternative"])
+        else:
+            kwargs["alternative"] = "two-sided"
 
         __filtering_kwargs = {
             "dataframe": dataframe,
@@ -538,7 +541,7 @@ class Tester(ABToolAbstract):
         }
         if dataframe is not None:
             experiment_results = DataframeHandler()._handle_cases(
-                Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+                Tester.__filter_data, filter_spark_and_make_groups, **__filtering_kwargs
             )
 
         arguments_choice: types._PrepareArgumentsType = {
@@ -570,9 +573,7 @@ class Tester(ABToolAbstract):
             chosen_args["data_a_group"] = chosen_args["experiment_results"][group_a_label]
             chosen_args["data_b_group"] = chosen_args["experiment_results"][group_b_label]
             pre_run_args = (method, chosen_args)
-            subresult: types.TesterResult = DataframeHandler()._handle_on_table(
-                Tester.__pre_run, Tester.__pre_run_spark, chosen_args["data_a_group"], *pre_run_args, **kwargs
-            )
+            subresult: types.TesterResult = Tester.__pre_run(*pre_run_args, **kwargs)
             subresult["group_a_label"] = group_a_label
             subresult["group_b_label"] = group_b_label
             result[test_name] = subresult
