@@ -4,23 +4,25 @@ import typing as tp
 import numpy as np
 import pandas as pd
 
-from ambrosia import types
-from ambrosia.tools.import_tools import spark_installed
-from ambrosia.tools.ab_abstract_component import StatCriterion, choose_on_table
-import ambrosia.tools.stat_criteria as criteria_pkg
 import ambrosia.spark_tools.stat_criteria as spark_crit_pkg
+import ambrosia.tools.stat_criteria as criteria_pkg
+from ambrosia import types
+from ambrosia.tools.ab_abstract_component import StatCriterion, choose_on_table
+from ambrosia.tools.import_tools import spark_installed
 
 # Avoid errors with not installed spark
 
 if spark_installed():
     import pyspark.sql.functions as spark_funcs
-    
 
-def filter_spark_and_make_groups(dataframe: types.SparkDataFrame,
-                                 df_mapping: types.GroupsInfoType,
-                                 column_groups: types.ColumnNameType,
-                                 group_labels: types.GroupLabelsType,
-                                 id_column: types.ColumnNameType,) -> types.TwoSamplesType:
+
+def filter_spark_and_make_groups(
+    dataframe: types.SparkDataFrame,
+    df_mapping: types.GroupsInfoType,
+    column_groups: types.ColumnNameType,
+    group_labels: types.GroupLabelsType,
+    id_column: types.ColumnNameType,
+) -> types.TwoSamplesType:
     if dataframe is None:
         return None
     if df_mapping is not None:
@@ -42,21 +44,15 @@ class PandasCriteria(enum.Enum):
 
 class SparkCriteria(enum.Enum):
     ttest: StatCriterion = spark_crit_pkg.TtestIndCriterionSpark
-    ttest_rel: StatCriterion = spark_crit_pkg.TtestRelativeCriterionSpark
+    ttest_rel: StatCriterion = None  # spark_crit_pkg.TtestRelativeCriterionSpark it's in development now
     mw: StatCriterion = None
     wilcoxon: StatCriterion = None
 
 
 class TheoreticalTesterHandler:
-
-    def __init__(self,
-                 group_a,
-                 group_b,
-                 column: str,
-                 alpha: np.ndarray,
-                 effect_type: str,
-                 criterion: StatCriterion,
-                 **kwargs):
+    def __init__(
+        self, group_a, group_b, column: str, alpha: np.ndarray, effect_type: str, criterion: StatCriterion, **kwargs
+    ):
         self.group_a = group_a
         self.group_b = group_b
         self.column = column

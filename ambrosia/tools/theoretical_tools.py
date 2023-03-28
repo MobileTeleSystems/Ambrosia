@@ -23,8 +23,8 @@ import statsmodels.stats.api as sms
 from scipy.stats import norm
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
-from ambrosia.tools.configs import Alternatives
 from ambrosia import types
+from ambrosia.tools.configs import Alternatives
 
 FIRST_TYPE_ERROR: float = 0.05
 SECOND_TYPE_ERROR: float = 0.2
@@ -57,6 +57,14 @@ def check_encode_alternative(alternative: str) -> str:
         raise ValueError(f"Alternative must be one of '{alternatives}'.")
     else:
         return statsmodels_alternatives_encoding[alternative]
+
+
+def unbiased_to_sufficient(std: float, size: int) -> float:
+    """
+    Transforms unbiased estimation of standard deviation to sufficient
+    (ddof = 1) => (ddof = 0)
+    """
+    return std * np.sqrt((size - 1) / size)
 
 
 def check_target_type(
@@ -731,14 +739,15 @@ def design_power(
     )
 
 
-def get_ttest_info_from_stats(var_a: float, var_b: float, n_obs_a: int,
-                              n_obs_b: int, alpha: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    '''
+def get_ttest_info_from_stats(
+    var_a: float, var_b: float, n_obs_a: int, n_obs_b: int, alpha: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
     Returns quantiles and standard deviation of Ttest criterion statistic
-    '''
+    """
     compound_se: float = np.sqrt(var_a / n_obs_a + var_b / n_obs_b)
     denominator: float = (var_a / n_obs_a) ** 2 / (n_obs_a - 1) + (var_b / n_obs_b) ** 2 / (n_obs_b - 1)
-    dim: float = compound_se ** 2 / denominator
+    dim: float = compound_se**2 / denominator
     quantiles: np.ndarray = sps.t.ppf(1 - alpha / 2, df=dim)
     return quantiles, compound_se
 
@@ -777,7 +786,7 @@ def apply_delta_method_by_stats(
     cov_groups: float = 0,
     transformation: str = "fraction",
     alpha: np.ndarray = np.array([FIRST_TYPE_ERROR]),
-    alternative: str = "two_sided",
+    alternative: str = "two-sided",
 ) -> Tuple[types.ManyIntervalType, float]:
     """
     Computation of pvalue and confidence intervals for each I type error bound (alpha)
@@ -880,11 +889,10 @@ def apply_delta_method(
     )
 
 
-def ttest_1samp_from_stats(mean: float,
-                           std: float,
-                           n_obs: int,
-                           alternative: str = Alternatives.ts.value) -> Tuple[float, float]:
-    '''
+def ttest_1samp_from_stats(
+    mean: float, std: float, n_obs: int, alternative: str = Alternatives.ts.value
+) -> Tuple[float, float]:
+    """
     Implementation of ttest_1samp for stats, not from observations
 
     Parameters
@@ -897,12 +905,12 @@ def ttest_1samp_from_stats(mean: float,
         Amount of observations
     alternative: str
         One of two-sided, less, greater
-    
+
     Returns
     -------
     (statistic, pvalue): Tuple[float, float]
     Statistic of criterion and pvalue
-    '''
+    """
     statistic: float = mean / std * np.sqrt(n_obs)
 
     if alternative == Alternatives.gr.value:

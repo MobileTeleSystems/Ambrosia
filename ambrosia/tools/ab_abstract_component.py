@@ -22,9 +22,9 @@ import numpy as np
 import pandas as pd
 from yaml import YAMLObjectMetaclass
 
+import ambrosia.tools.pvalue_tools as pvalue_pkg
 from ambrosia import types
 from ambrosia.tools import log
-import ambrosia.tools.pvalue_tools as pvalue_pkg
 
 AVAILABLE: List[str] = ["pandas", "spark"]
 DATA: str = "dataframe"
@@ -227,9 +227,9 @@ class AbstractVarianceReducer(AbstractFittableTransformer):
 
 
 def choose_on_table(alternatives: List[Any], dataframe) -> Any:
-    '''
+    """
     alternatives: [alternative_pandas, alternative_spark, ...]
-    '''
+    """
     if isinstance(dataframe, pd.DataFrame):
         return alternatives[0]
     elif isinstance(dataframe, types.SparkDataFrame):
@@ -398,7 +398,7 @@ class ABStatCriterion(StatCriterion):
         self, group_a: Iterable[float], group_b: Iterable[float], alpha: types.StatErrorType, effect_type: str, **kwargs
     ) -> List[Tuple]:
         pass
-    
+
     def _make_ci(self, left_ci: np.ndarray, right_ci: np.ndarray, alternative: str) -> List:
         left_ci, right_ci = pvalue_pkg.choose_from_bounds(left_ci, right_ci, alternative)
         conf_intervals = list(zip(left_ci, right_ci))
@@ -414,8 +414,9 @@ class ABStatCriterion(StatCriterion):
     ) -> types.StatCriterionResult:
         return {
             "first_type_error": alpha,
-            "pvalue": self.calculate_pvalue(group_a, group_b, **kwargs),
-            "effect": self.calculate_effect(group_a, group_b, effect_type),
-            "confidence_interval": self.calculate_conf_interval(group_a, group_b,
-                                                                alpha=alpha, effect_type=effect_type, **kwargs),
+            "pvalue": self.calculate_pvalue(group_a, group_b, effect_type=effect_type, **kwargs),
+            "effect": self.calculate_effect(group_a, group_b, effect_type=effect_type),
+            "confidence_interval": self.calculate_conf_interval(
+                group_a, group_b, alpha=alpha, effect_type=effect_type, **kwargs
+            ),
         }

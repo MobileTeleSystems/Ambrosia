@@ -39,10 +39,10 @@ import ambrosia.tools.empirical_tools as empirical_pkg
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.stat_criteria as criteria_pkg
 from ambrosia import types
-from .handlers import filter_spark_and_make_groups, TheoreticalTesterHandler
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, ABToolAbstract, DataframeHandler, StatCriterion
 
 from .binary_result_evaluation import binary_absolute_result, binary_relative_result
+from .handlers import TheoreticalTesterHandler, filter_spark_and_make_groups
 
 BOOTSTRAP_SIZE: int = 1000
 AVAILABLE: List[str] = ["pandas", "spark"]
@@ -226,7 +226,9 @@ class Tester(ABToolAbstract):
             "id_column": id_column,
         }
         self.__experiment_results = DataframeHandler()._handle_cases(
-            Tester.__filter_data, filter_spark_and_make_groups, **__filtering_kwargs,
+            Tester.__filter_data,
+            filter_spark_and_make_groups,
+            **__filtering_kwargs,
         )
 
     def __init__(
@@ -376,13 +378,15 @@ class Tester(ABToolAbstract):
                 # TODO: Make it SolverClass ~ method
                 # solver = SolverClass(...)
                 # sub_result = solver.solve()
-                solver = TheoreticalTesterHandler(args["data_a_group"],
-                                                  args["data_b_group"],
-                                                  column=metric,
-                                                  alpha=np.array(args["alpha"]),
-                                                  effect_type=args["effect_type"],
-                                                  criterion=args["criterion"],
-                                                  **kwargs)
+                solver = TheoreticalTesterHandler(
+                    args["data_a_group"],
+                    args["data_b_group"],
+                    column=metric,
+                    alpha=np.array(args["alpha"]),
+                    effect_type=args["effect_type"],
+                    criterion=args["criterion"],
+                    **kwargs,
+                )
                 sub_result = solver.solve()
             elif method == "empiric":
                 sub_result = Tester.__bootstrap_result(
@@ -394,12 +398,6 @@ class Tester(ABToolAbstract):
                 )
             result[metric] = sub_result
         return result
-
-    @staticmethod
-    def __pre_run_spark():
-        """
-        Function to handle run method on Spark dataframes.
-        """
 
     @staticmethod
     def __apply_first_stage_multitest_correction(

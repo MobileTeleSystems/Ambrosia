@@ -15,6 +15,7 @@ def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
         return True
     return abs(a - b) < eps
 
+
 def check_eq_int(i1, i2) -> bool:
     return check_eq(i1[0], i2[0]) and check_eq(i1[1], i2[1])
 
@@ -306,9 +307,10 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
 
 
 @pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
-def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str):
-    res_pandas = tester_on_ltv_retention.run("absolute", "theory", as_table=False, alternative=alternative)
-    res_spark = tester_spark_ltv_ret.run("absolute", "theory", as_table=False, alternative=alternative)
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str, effect_type: str):
+    res_pandas = tester_on_ltv_retention.run(effect_type, "theory", as_table=False, alternative=alternative)
+    res_spark = tester_spark_ltv_ret.run(effect_type, "theory", as_table=False, alternative=alternative)
     for j in range(len(res_pandas)):
-        assert check_eq(res_pandas[j]['pvalue'], res_spark[j]['pvalue'])
+        assert check_eq(res_pandas[j]["pvalue"], res_spark[j]["pvalue"])
         assert check_eq_int(res_pandas[j]["confidence_interval"], res_spark[j]["confidence_interval"])

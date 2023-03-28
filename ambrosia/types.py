@@ -24,6 +24,7 @@ if spark_installed():
 
 # PySpark types
 
+
 class PySparkStub:
     pass
 
