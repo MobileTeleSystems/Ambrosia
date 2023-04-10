@@ -32,6 +32,5 @@ Examples using testing tools
 .. nblinkgallery::
     :name: tester-examples
 
-    pandas_examples/design_binary
-    spark_examples/spark_api
-    ab_cases/matemarketing_workshop
+    /pandas_examples/design_binary
+    /spark_examples/spark_api

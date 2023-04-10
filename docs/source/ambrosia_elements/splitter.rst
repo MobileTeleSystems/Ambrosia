@@ -32,5 +32,5 @@ Examples using groups splitting tools
 .. nblinkgallery::
     :name: splitter-examples
 
-    pandas_examples/design_binary
-    spark_examples/spark_api
+    /pandas_examples/design_binary
+    /spark_examples/spark_api

@@ -2,6 +2,6 @@ Spark data examples
 -------------------
 
 .. nblinkgallery::
-    :name: spaek-examples
+    :name: spark-examples
 
     spark_examples/spark_api

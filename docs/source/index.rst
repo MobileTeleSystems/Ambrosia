@@ -63,15 +63,15 @@ non-parametric, bootstrap, and others.
     :name: mastertoc
     :hidden:
 
-    preprocessing
-    designer
-    splitter
-    tester
+    ambrosia_elements/preprocessing
+    ambrosia_elements/designer
+    ambrosia_elements/splitter
+    ambrosia_elements/tester
 
 .. toctree::
     :maxdepth: 1
     :caption: Develop
-    :name: development
+    :name: develop
     :hidden:
 
     develop
@@ -86,6 +86,7 @@ non-parametric, bootstrap, and others.
 
     nb_pandas_examples
     nb_spark_examples
+    ab_cases
 
 .. toctree::
     :maxdepth: 1
