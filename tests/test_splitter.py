@@ -1,10 +1,14 @@
 from typing import List
+import os
+import yaml
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ambrosia.splitter import Splitter, split
+from ambrosia.splitter import Splitter, split, load_from_config
+
+store_path: str = "tests/configs/dumped_splitter.yaml"
 
 
 @pytest.mark.smoke()
@@ -212,3 +216,24 @@ def test_full_split_spark(ltv_and_retention_dataset, splitter_ltv_spark, factor,
     size_b: int = result.where("group == 'B'").count()
     assert size_a == round(total_size * factor)
     assert size_b == round(total_size * (1 - factor))
+
+
+@pytest.mark.unit
+def test_splitter_load_from_config(ltv_and_retention_dataset):
+    """
+    Test Splitter class dump and load from yaml abilities.
+    """
+    method: str = "hash"
+    salt: str = "test"
+    splitter = Splitter(
+        dataframe=ltv_and_retention_dataset, groups_size=1000, strat_columns="retention", fit_columns="LTV"
+    )
+    split_res = splitter.run(method=method, salt=salt, groups_number=3)
+    with open(store_path, "w") as outfile:
+        yaml.dump(splitter, outfile, default_flow_style=False)
+
+    loaded_splitter = load_from_config(store_path)
+    loaded_splitter.set_dataframe(ltv_and_retention_dataset)
+    split_res_from_config = loaded_splitter.run(method=method, salt=salt, groups_number=3)
+    os.remove(store_path)
+    assert split_res.equals(split_res_from_config)
