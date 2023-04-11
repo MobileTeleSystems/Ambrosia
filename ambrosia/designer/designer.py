@@ -123,8 +123,9 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     need in both groups to detect such effect.
 
     We can use ``Designer`` class in the following way:
-        >>> designer = Designer(dataframe=df, metric='retention', effect=1.033)
-        >>> designer.run("size")
+
+    >>> designer = Designer(dataframe=df, metric='retention', effect=1.033)
+    >>> designer.run("size")
 
     Note, that default values for errors are:
         ``first_type_error`` = ``0.05``
@@ -138,46 +139,49 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     -----
 
     Constructors:
-        >>> designer = Designer()
-        >>> # You can pass an Iterable or single object for some parameters
-        >>> designer = Designer(
-        >>>     dataframe=df,
-        >>>     sizes=[100, 200],
-        >>>     metrics='LTV',
-        >>>     effects=1.05
-        >>> )
-        >>> designer = Desginer(sizes=1000, metrics=['retention', 'LTV'])
-        >>> # You can use path to .csv table for pandas
-        >>> designer = Designer('./data/table.csv')
+
+    >>> designer = Designer()
+    >>> # You can pass an Iterable or single object for some parameters
+    >>> designer = Designer(
+    >>>     dataframe=df,
+    >>>     sizes=[100, 200],
+    >>>     metrics='LTV',
+    >>>     effects=1.05
+    >>> )
+    >>> designer = Desginer(sizes=1000, metrics=['retention', 'LTV'])
+    >>> # You can use path to .csv table for pandas
+    >>> designer = Designer('./data/table.csv')
 
     Setters:
-        >>> designer.set_first_errors([0.05, 0.01])
-        >>> desginer.set_dataframe(df)
+
+    >>> designer.set_first_errors([0.05, 0.01])
+    >>> desginer.set_dataframe(df)
 
     Run:
-        >>> # One can pass arguments and they will have higher priority
-        >>> designer.run('size', effects=1.1)
-        >>> designer.run('effect', sizes=[500, 1000], metrics='retention')
-        >>> # You can set method (watch below)
-        >>> designer.run('effect', sizes=[500, 1000], metrics='retention', method='binary')
+
+    >>> # One can pass arguments and they will have higher priority
+    >>> designer.run('size', effects=1.1)
+    >>> designer.run('effect', sizes=[500, 1000], metrics='retention')
+    >>> # You can set method (watch below)
+    >>> designer.run('effect', sizes=[500, 1000], metrics='retention', method='binary')
 
     Load from yaml config:
-        >>> config = '''
-                !splitter # <--- this is yaml tag (!important)
-                    effects:
-                        - 0.9
-                        - 1.05
-                    sizes:
-                        - 1000
-                    dataframe:
-                        ./data/table.csv
-            '''
-        >>> designer = yaml.load(config)
-        >>> # Or use the implmented function
-        >>> designer = load_from_config(config)
+
+    >>> config = '''
+            !splitter # <--- this is yaml tag (!important)
+                effects:
+                    - 0.9
+                    - 1.05
+                sizes:
+                    - 1000
+        '''
+    >>> designer = yaml.load(config)
+    >>> # Or use the implmented function
+    >>> designer = load_from_config(config)
 
     Use standalone function instead of a class:
-        >>> design('size', dataframe=df, effects=1.05, metrics='retention')
+
+    >>> design('size', dataframe=df, effects=1.05, metrics='retention')
     """
 
     # YAML tag for loading from configs
