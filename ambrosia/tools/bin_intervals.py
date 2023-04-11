@@ -23,6 +23,8 @@ import ambrosia.tools._lib._bin_ci_aide as helper_dir
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 from ambrosia import types
 
+from . import EFFECT_COL_NAME, FIRST_TYPE_ERROR_COL_NAME, GROUP_SIZE_COL_NAME, STAT_ERRORS_COL_NAME
+
 RELATIVE_ABSOLUTE_DELTA_ERROR = ValueError("Choose relative or absolute delta, not both")
 ROUND_DIGITS: int = 3
 ROUND_DIGITS_TABLE: int = 3
@@ -470,9 +472,9 @@ def get_table_power_on_size_and_delta(
     first_errors : Iterable[float], default : ``(0.05,)``
         First type error values
     delta_values : Iterable[float]
-        Absolute delta values: p_a - p_b = delta
+        Absolute delta values: p_b - p_a = delta
     delta_relative_values : Iterable[float]
-        Relative delta values: delta_relative * p_a = p_b
+        Relative delta values: p_b = delta_relative * p_a
     interval_type : str
         interval_type for confidence interval
     alternative : str, default : ``"two-sided"``
@@ -494,22 +496,20 @@ def get_table_power_on_size_and_delta(
     if not (delta_values is None) ^ (delta_relative_values is None):
         raise RELATIVE_ABSOLUTE_DELTA_ERROR
     if delta_values is not None:
-        p_b_values: np.ndarray = p_a - np.array(delta_values)
+        p_b_values: np.ndarray = p_a + np.array(delta_values)
         grid_delta: np.ndarray = delta_values
-        delta_name: str = r"$\Delta$-absolute"
     else:
         p_b_values: np.ndarray = p_a * np.array(delta_relative_values)
-        grid_delta: np.ndarray = delta_relative_values
-        delta_name: str = r"$\delta$-relative"
+        grid_delta: np.ndarray = [f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in delta_relative_values]
     if not np.all((p_b_values >= 0) & (p_b_values <= 1)):
         raise ValueError(f"Probability of success in group B must be positive, not {p_b_values}")
 
     values = [(round(a, ROUND_DIGITS), b) for a in first_errors for b in grid_delta]
     table: pd.DataFrame = pd.DataFrame(
-        index=pd.MultiIndex.from_tuples(values, names=[r"$\alpha$", delta_name]),
+        index=pd.MultiIndex.from_tuples(values, names=[FIRST_TYPE_ERROR_COL_NAME, EFFECT_COL_NAME]),
         columns=trials,
     )
-    table.columns.name = "sample sizes"
+    table.columns.name = GROUP_SIZE_COL_NAME
     sample_a = sps.binom.rvs(n=trials, p=p_a, size=(amount, trials.shape[0]))
     for alpha in first_errors:
         for p_b, delta in zip(p_b_values, grid_delta):
@@ -545,14 +545,20 @@ def iterate_for_sample_size(
     """
     Iterate over params for different sample size
     """
-    values = [(round(a, ROUND_DIGITS), round(b, ROUND_DIGITS)) for a in first_errors for b in second_errors]
-    table: pd.DataFrame = pd.DataFrame(
-        index=pd.MultiIndex.from_tuples(values, names=[r"$\alpha$", r"$\beta$"]),
-        columns=grid_delta,
+    # values = [(round(a, ROUND_DIGITS), round(b, ROUND_DIGITS)) for a in first_errors for b in second_errors]
+    # table: pd.DataFrame = pd.DataFrame(
+    #     index=pd.MultiIndex.from_tuples(values, names=[r"$\alpha$", r"$\beta$"]),
+    #     columns=grid_delta,
+    # )
+    multiindex = pd.MultiIndex.from_tuples([(eff,) for eff in grid_delta], names=[EFFECT_COL_NAME])
+    multicols = pd.MultiIndex.from_tuples(
+        [(f"({alpha}; {beta})",) for alpha in first_errors for beta in second_errors],
+        names=[STAT_ERRORS_COL_NAME],
     )
+    table: pd.DataFrame = pd.DataFrame(index=multiindex, columns=multicols)
     for alpha in first_errors:
-        for second_error in second_errors:
-            power = 1 - second_error
+        for beta in second_errors:
+            power = 1 - beta
             for p_b, delta in zip(p_b_values, grid_delta):
                 trials = helper_dir.__helper_bin_search_for_size(
                     interval_type=interval_type,
@@ -562,7 +568,7 @@ def iterate_for_sample_size(
                     amount=amount,
                     power=power,
                 )
-                table.loc[(alpha, second_error), delta] = trials
+                table.loc[delta, f"({alpha}; {beta})"] = trials
     return table
 
 
@@ -589,9 +595,9 @@ def get_table_sample_size_on_effect(
     p_a : Iterable[float]
         Conversion in A group, default : ``0.5``
     delta_values : Iterable[float]
-        Absolute delta values: p_a - p_b = delta
+        Absolute delta values: p_b - p_a = delta
     delta_relative_values : Iterable[float]
-        Relative delta values: delta_relative * p_a = p_b
+        Relative delta values: p_b = delta_relative * p_a
     amount : int, default : ``1000``
         Amount of generated samples for one n(trials amount), to estimate power
 
@@ -615,16 +621,14 @@ def get_table_sample_size_on_effect(
         delta_values = [p_a / 2]
 
     if delta_values is not None:
-        p_b_values: np.ndarray = p_a - np.array(delta_values)
+        p_b_values: np.ndarray = p_a + np.array(delta_values)
+        grid_delta: np.ndarray = delta_values
     else:
         p_b_values: np.ndarray = p_a * np.array(delta_relative_values)
+        grid_delta: np.ndarray = [f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in delta_relative_values]
     if not np.all((p_b_values >= 0) & (p_b_values <= 1)):
         raise ValueError(f"Probability of success in group B must be positive, not {p_b_values}")
-
-    grid_delta: np.ndarray = delta_values if delta_values is not None else delta_relative_values
     table = iterate_for_sample_size(interval_type, first_errors, second_errors, p_a, p_b_values, grid_delta, amount)
-
-    table.columns.name = r"$\Delta$-absolute" if delta_values is not None else r"$\delta$-relative"
     return table
 
 
@@ -639,16 +643,17 @@ def iterate_for_delta(
     as_numeric: bool = False,
 ) -> pd.DataFrame:
     """
-    Helps find effect for different params.
+    Helps to find effect for different params.
     """
-    values = [(round(a, ROUND_DIGITS), round(b, ROUND_DIGITS)) for a in first_errors for b in second_errors]
-    table: pd.DataFrame = pd.DataFrame(
-        index=pd.MultiIndex.from_tuples(values, names=[r"$\alpha$", r"$\beta$"]),
-        columns=sample_sizes,
+    multiindex = pd.MultiIndex.from_tuples([(trials,) for trials in sample_sizes], names=[GROUP_SIZE_COL_NAME])
+    multicols = pd.MultiIndex.from_tuples(
+        [(f"({alpha}; {beta})",) for alpha in first_errors for beta in second_errors],
+        names=[STAT_ERRORS_COL_NAME],
     )
+    table: pd.DataFrame = pd.DataFrame(index=multiindex, columns=multicols)
     for alpha in first_errors:
-        for second_error in second_errors:
-            power = 1 - second_error
+        for beta in second_errors:
+            power = 1 - beta
             for trials in sample_sizes:
                 delta = helper_dir.__helper_bin_search_for_delta(
                     interval_type=interval_type,
@@ -663,7 +668,7 @@ def iterate_for_delta(
                         delta = round(abs(delta) / p_a, ROUND_DIGITS_TABLE) + 1
                     else:
                         delta = str(round(abs(delta) / p_a * 100, ROUND_DIGITS_PERCENT)) + "%"
-                table.loc[(alpha, second_error), trials] = delta
+                table.loc[trials, f"({alpha}; {beta})"] = delta
     return table
 
 
@@ -720,5 +725,4 @@ def get_table_effect_on_sample_size(
     table: pd.DataFrame = iterate_for_delta(
         interval_type, first_errors, second_errors, sample_sizes, p_a, amount, delta_type, as_numeric
     )
-    table.columns.name = "Sample size"
     return table
