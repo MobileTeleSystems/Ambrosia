@@ -1,11 +1,34 @@
 import contextlib
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional, Union, Iterable
 
 import joblib
 from tqdm.auto import tqdm
+import numpy as np
 
 from ambrosia import types
 from ambrosia.tools.decorators import tqdm_parallel_decorator
+
+
+def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]]] = None) -> np.ndarray:
+    """
+    Create a seed sequence using ``numpy.random.SeedSequence`` class.
+
+    Parameters
+    ----------
+    length : int
+        Total length of a sequence.
+    entropy : Union[int,Iterable[int]], optional
+        The entropy for creating a ``SeedSequence``.
+        Used to get a deterministic result.
+
+    Returns
+    -------
+    seed_sequence : List
+        The seed sequence of requested length.
+    """
+    rng = np.random.SeedSequence(entropy)
+    seed_sequence: np.ndarray = rng.generate_state(length)
+    return seed_sequence
 
 
 @contextlib.contextmanager

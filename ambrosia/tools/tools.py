@@ -86,7 +86,7 @@ def bootstrap_over_statistical_population(
         List of calculated correctness/power for bootstraped groups
         [corretness_0/power_0, correctness_1/power_1 ... corretness_k/power_k]
     """
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(metrics), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(metrics), random_seed)
     iterator = zip(metrics, seed_sequence)
     result_list = []
     for metric, seed in iterator:
@@ -170,7 +170,7 @@ def get_errors(
         correctness_1, power_1 ... corretness_k, power_k].
     """
     parameters = tuple(product(zip(sample_sizes_a, sample_sizes_b), effects, alphas))
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(parameters), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
     n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
         n_jobs,
@@ -522,7 +522,7 @@ def calculate_group_size(
         Optimal group size for each metric from metrics list
     """
     power: float = 1 - beta
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(metrics), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(metrics), random_seed)
     iterator = zip(metrics, seed_sequence)
     group_sizes: List = []
     for metric, seed in iterator:
@@ -609,7 +609,7 @@ def get_group_sizes(
         group_sizes_list - Array of lists of sizes for each metric from metrics list.
     """
     parameters: Tuple = tuple(product(effects, alphas, betas))
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(parameters), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
     n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
         n_jobs, criterion, calculate_group_size, desc="Group sizes calculation", total=len(parameters), **kwargs
@@ -934,7 +934,7 @@ def calculate_empirical_mde(
         List of minimal detectable effect for each metric from metrics list.
     """
     power: float = 1 - beta
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(metrics), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(metrics), random_seed)
     iterator = zip(metrics, seed_sequence)
     mdes: List = []
     for metric, seed in iterator:
@@ -1021,7 +1021,7 @@ def get_empirical_mde(
         mde_list - Array of lists of mde lists for each metric from metrics list.
     """
     parameters: Tuple = tuple(product(group_sizes, alphas, betas))
-    seed_sequence: np.ndarray = emp_pkg.create_seed_sequence(len(parameters), random_seed)
+    seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
     n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
         n_jobs, criterion, calculate_empirical_mde, desc="MDE calculation", total=len(parameters), **kwargs

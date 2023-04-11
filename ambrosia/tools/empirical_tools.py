@@ -31,28 +31,6 @@ AVAILABLE_AB_CRITERIA: Dict[str, ABStatCriterion] = {
 }
 
 
-def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]]] = None) -> np.ndarray:
-    """
-    Create a seed sequence using ``numpy.random.SeedSequence`` class.
-
-    Parameters
-    ----------
-    length : int
-        Total length of a sequence.
-    entropy : Union[int,Iterable[int]], optional
-        The entropy for creating a ``SeedSequence``.
-        Used to get a deterministic result.
-
-    Returns
-    -------
-    seed_sequence : List
-        The seed sequence of requested length.
-    """
-    rng = np.random.SeedSequence(entropy)
-    seed_sequence: np.ndarray = rng.generate_state(length)
-    return seed_sequence
-
-
 def inject_effect(
     sampled_metric_vals: np.ndarray,
     sample_size_a: int,
@@ -198,8 +176,9 @@ def get_bs_sample_stat(
 ) -> bool:
     """
     Evaluate if difference in groups is significant.
-    If confidence interval contains 0 then effect is not significant else significant.
-    Return True if we have effect else False.
+
+    If confidence interval contains 0 then effect is not statistically significant.
+    Returns ``True`` if we have effect else ``False``.
 
     Parameters
     ----------
@@ -229,15 +208,15 @@ def get_bs_sample_stat(
     seed_sequence: np.ndarray = rng.generate_state(2)
     bs_stat_a = get_bs_stat(sample[:sample_size_a], stat=stat, N=N, random_seed=seed_sequence[0])
     bs_stat_b = get_bs_stat(sample[sample_size_a:], stat=stat, N=N, random_seed=seed_sequence[1])
-    bs_stat_diff = bs_stat_b - bs_stat_a
+    bs_stat_diff: np.ndarray = bs_stat_b - bs_stat_a
     if alternative == "less":
-        right_side = np.percentile(bs_stat_diff, 1 - alpha)
+        right_side = np.quantile(bs_stat_diff, 1 - alpha)
         overlap = right_side <= 0
     elif alternative == "greater":
-        left_side = np.percentile(bs_stat_diff, alpha)
+        left_side = np.quantile(bs_stat_diff, alpha)
         overlap = left_side >= 0
     elif alternative == "two-sided":
-        left_side, right_side = np.percentile(bs_stat_diff, [100 * alpha / 2.0, 100 * (1 - alpha / 2.0)])
+        left_side, right_side = np.quantile(bs_stat_diff, [alpha / 2.0, 1 - alpha / 2.0])
         overlap = not left_side <= 0 <= right_side
     else:
         raise ValueError(f"Incorrect alternative value - {alternative}, choose from two-sided, less, greater")
@@ -252,8 +231,9 @@ def make_bootstrap(
     stat: str = "mean",
     random_seed: Optional[int] = None,
     n_jobs: int = 1,
-    backend: str = "threading",
+    backend: str = "loky",
     verbose: bool = False,
+    **kwargs,
 ) -> float:
     """
     Evaluate share of cases when we find difference in groups using bootstrap.
@@ -275,10 +255,12 @@ def make_bootstrap(
         A seed for the deterministic outcome of random processes.
     n_jobs : int, default: ``1``
         Amount of threads/workers for parallel.
-    backend : str, default: ``"threading"``
+    backend : str, default: ``"loky"``
         Type of backend for joblib parallel computation.
     verbose : bool, default: ``False``
         Whether to make logging.
+    **kwargs : Dict
+        Other keyword arguments.
 
     Returns
     -------
@@ -298,6 +280,7 @@ def make_bootstrap(
                 N=N,
                 stat=stat,
                 random_seed=seed,
+                **kwargs,
             )
             for sample_num, seed in iterator
         )
@@ -365,6 +348,7 @@ def eval_error(
             random_seed=random_seed,
             n_jobs=n_jobs,
             verbose=verbose,
+            **kwargs,
         )
     else:
         raise ValueError(f"Criterion {mode} is not found, choose from {not_bootstrap_criteria} or 'bootstrap'")
