@@ -645,6 +645,7 @@ def design_binary_effect(
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
     stabilizing_method: str = "asin",
+    as_numeric: bool = False,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -679,6 +680,9 @@ def design_binary_effect(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
     **kwargs : Dict
         Other keyword arguments.
 
@@ -694,7 +698,6 @@ def design_binary_effect(
     if isinstance(second_type_errors, float):
         second_type_errors = [second_type_errors]
     if method == "theory":
-        as_numeric: bool = kwargs["as_numeric"] if "as_numeric" in kwargs else False
         return theory_pkg.get_minimal_effects_table(
             mean=prob_a,
             std=None,
@@ -713,6 +716,7 @@ def design_binary_effect(
             sample_sizes=sizes,
             first_errors=first_type_errors,
             second_errors=second_type_errors,
+            as_numeric=as_numeric,
             **kwargs,
         )
     else:
@@ -728,6 +732,7 @@ def design_binary_power(
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
     stabilizing_method: str = "asin",
+    as_numeric: bool = False,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -762,6 +767,9 @@ def design_binary_power(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
     **kwargs : Dict
         Other keyword arguments.
 
@@ -777,7 +785,6 @@ def design_binary_power(
     if isinstance(first_type_errors, float):
         first_type_errors = [first_type_errors]
     if method == "theory":
-        as_numeric: bool = kwargs["as_numeric"] if "as_numeric" in kwargs else False
         return theory_pkg.get_power_table(
             mean=prob_a,
             std=None,
@@ -796,6 +803,7 @@ def design_binary_power(
             sample_sizes=sizes,
             first_errors=first_type_errors,
             delta_relative_values=effects,
+            as_numeric=as_numeric,
             **kwargs,
         )
     else:
@@ -852,7 +860,6 @@ def design_binary(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
-
     **kwargs : Dict
         Other keyword arguments.
 
