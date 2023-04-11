@@ -172,7 +172,7 @@ def get_errors(
     parameters = tuple(product(zip(sample_sizes_a, sample_sizes_b), effects, alphas))
     seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
-    n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
+    handled_params: Dict = back_tools.handle_nested_multiprocessing(
         n_jobs,
         criterion,
         bootstrap_over_statistical_population,
@@ -180,10 +180,10 @@ def get_errors(
         total=len(parameters),
         **kwargs,
     )
-    with progress_bar:
-        with parallel_backend(n_jobs=n_jobs, backend="loky"):
+    with handled_params["progress_bar"]:
+        with parallel_backend(n_jobs=handled_params["n_jobs"], backend="loky"):
             empirical_errors = Parallel(verbose=verbose)(
-                delayed(parallel_func)(
+                delayed(handled_params["parallel_func"])(
                     dataframe=dataframe,
                     metrics=metrics,
                     sample_size_a=params[0][0],
@@ -194,9 +194,9 @@ def get_errors(
                     criterion=criterion,
                     injection_method=injection_method,
                     random_seed=seed,
-                    n_jobs=bootstrap_n_jobs,
+                    n_jobs=handled_params["nested_n_jobs"],
                     verbose=verbose,
-                    **kwargs,
+                    **handled_params["kwargs"],
                 )
                 for params, seed in iterator
             )
@@ -611,13 +611,13 @@ def get_group_sizes(
     parameters: Tuple = tuple(product(effects, alphas, betas))
     seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
-    n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
+    handled_params: Dict = back_tools.handle_nested_multiprocessing(
         n_jobs, criterion, calculate_group_size, desc="Group sizes calculation", total=len(parameters), **kwargs
     )
-    with progress_bar:
-        with parallel_backend(n_jobs=n_jobs, backend="loky"):
+    with handled_params["progress_bar"]:
+        with parallel_backend(n_jobs=handled_params["n_jobs"], backend="loky"):
             group_sizes_list = Parallel(verbose=verbose)(
-                delayed(parallel_func)(
+                delayed(handled_params["parallel_func"])(
                     dataframe=dataframe,
                     metrics=metrics,
                     effect=params[0],
@@ -627,12 +627,12 @@ def get_group_sizes(
                     criterion=criterion,
                     bs_samples=bs_samples,
                     injection_method=injection_method,
-                    n_jobs=bootstrap_n_jobs,
+                    n_jobs=handled_params["nested_n_jobs"],
                     verbose=verbose,
                     evals=evals,
                     optim_solution=optim_solution,
                     random_seed=seed,
-                    **kwargs,
+                    **handled_params["kwargs"],
                 )
                 for params, seed in iterator
             )
@@ -1023,13 +1023,13 @@ def get_empirical_mde(
     parameters: Tuple = tuple(product(group_sizes, alphas, betas))
     seed_sequence: np.ndarray = back_tools.create_seed_sequence(len(parameters), random_seed)
     iterator = zip(parameters, seed_sequence)
-    n_jobs, bootstrap_n_jobs, parallel_func, progress_bar, kwargs = back_tools.handle_bootstrap_multiprocessing(
+    handled_params: Dict = back_tools.handle_nested_multiprocessing(
         n_jobs, criterion, calculate_empirical_mde, desc="MDE calculation", total=len(parameters), **kwargs
     )
-    with progress_bar:
-        with parallel_backend(n_jobs=n_jobs, backend="loky"):
+    with handled_params["progress_bar"]:
+        with parallel_backend(n_jobs=handled_params["n_jobs"], backend="loky"):
             mde_list = Parallel(verbose=verbose)(
-                delayed(parallel_func)(
+                delayed(handled_params["parallel_func"])(
                     dataframe=dataframe,
                     metrics=metrics,
                     group_size=params[0],
@@ -1042,9 +1042,9 @@ def get_empirical_mde(
                     random_seed=seed,
                     evals=evals,
                     optim_solution=optim_solution,
-                    n_jobs=bootstrap_n_jobs,
+                    n_jobs=handled_params["nested_n_jobs"],
                     verbose=verbose,
-                    **kwargs,
+                    **handled_params["kwargs"],
                 )
                 for params, seed in iterator
             )

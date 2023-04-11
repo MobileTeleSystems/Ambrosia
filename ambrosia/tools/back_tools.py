@@ -1,9 +1,9 @@
 import contextlib
-from typing import Callable, Tuple, Optional, Union, Iterable
+from typing import Any, Callable, Dict, Iterable, Optional, Union
 
 import joblib
-from tqdm.auto import tqdm
 import numpy as np
+from tqdm.auto import tqdm
 
 from ambrosia import types
 from ambrosia.tools.decorators import tqdm_parallel_decorator
@@ -54,21 +54,27 @@ def tqdm_joblib(tqdm_object):
         tqdm_object.close()
 
 
-def handle_bootstrap_multiprocessing(
+def handle_nested_multiprocessing(
     n_jobs: int, criterion: int, func: Callable, desc: str, total: int, **kwargs
-) -> Tuple[int, int]:
+) -> Dict[str, Any]:
     """
-    Handle parameters for bootstrap parallelism of experiment design computation tasks.
+    Handle parameters for nested bootstrap parallelism of experiment design computation tasks.
     """
     progress_bar = tqdm(desc=desc, total=total)
     if criterion == "bootstrap":
-        bootstrap_n_jobs, n_jobs = n_jobs, 1
+        nested_n_jobs, n_jobs = n_jobs, 1
         func = tqdm_parallel_decorator(func)
         kwargs["progress_bar"] = progress_bar
     else:
-        bootstrap_n_jobs: int = 1
+        nested_n_jobs: int = 1
         progress_bar = tqdm_joblib(progress_bar)
-    return n_jobs, bootstrap_n_jobs, func, progress_bar, kwargs
+    return {
+        "n_jobs": n_jobs,
+        "nested_n_jobs": nested_n_jobs,
+        "parallel_func": func,
+        "progress_bar": progress_bar,
+        "kwargs": kwargs,
+    }
 
 
 def wrap_cols(cols: types.ColumnNamesType) -> types.ColumnNamesType:
