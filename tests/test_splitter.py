@@ -1,12 +1,12 @@
-from typing import List
 import os
-import yaml
+from typing import List
 
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 
-from ambrosia.splitter import Splitter, split, load_from_config
+from ambrosia.splitter import Splitter, load_from_config, split
 
 store_path: str = "tests/configs/dumped_splitter.yaml"
 
