@@ -29,7 +29,7 @@ development and will be available soon.
 """
 import itertools
 from copy import deepcopy
-from typing import Dict, List, Optional, Union, Iterable
+from typing import Dict, List, Optional, Union
 from warnings import warn
 
 import numpy as np
