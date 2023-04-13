@@ -11,3 +11,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+GROUP_SIZE_COL_NAME: str = "Group sizes"
+EFFECT_COL_NAME: str = "Effect"
+FIRST_TYPE_ERROR_COL_NAME: str = r"$\alpha$"
+SECOND_TYPE_ERROR_COL_NAME: str = r"$\beta$"
+STAT_ERRORS_COL_NAME: str = f"Errors ({FIRST_TYPE_ERROR_COL_NAME}, {SECOND_TYPE_ERROR_COL_NAME})"
