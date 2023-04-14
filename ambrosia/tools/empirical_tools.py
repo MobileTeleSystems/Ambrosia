@@ -322,7 +322,7 @@ class BootstrapStats:
 
     """
 
-    def __init__(self, bootstrap_size: int = 100, metric: Union[str, Callable] = "mean", paired: bool = False):
+    def __init__(self, bootstrap_size: int = 10000, metric: Union[str, Callable] = "mean", paired: bool = False):
         """
         Parameters
         ----------
@@ -336,13 +336,16 @@ class BootstrapStats:
         self.__bs_size = bootstrap_size
         self.__metric_distribution = np.nan
         if isinstance(metric, str):
-            accepted_str_metrics: List[str] = ["mean", "fraction"]
+            accepted_str_metrics: List[str] = ["mean", "fraction", "median"]
             if metric not in accepted_str_metrics:
                 raise ValueError(f'Choose metric name from - {", ".join(accepted_str_metrics)}')
         self.__metric = metric
         self.__min_of_distribution = None
         self.__max_of_distribution = None
-        self.__paired = paired
+        if isinstance(paired, bool):
+            self.__paired = paired
+        else:
+            raise ValueError(f"paired parameter can only take boolean values")
 
     def __handle_str_metric(self, bootstrap_a: np.ndarray, bootstrap_b: np.ndarray) -> None:
         """
@@ -352,13 +355,15 @@ class BootstrapStats:
             self.__metric_distribution = np.mean(bootstrap_b, axis=1) - np.mean(bootstrap_a, axis=1)
         elif self.__metric == "fraction":
             self.__metric_distribution = np.mean(bootstrap_b, axis=1) / np.mean(bootstrap_a, axis=1) - 1
+        elif self.__metric == "median":
+            self.__metric_distribution = np.median(bootstrap_b, axis=1) - np.median(bootstrap_a, axis=1)
 
     def __handle_std_value(self) -> float:
         """
         Calculate value for criterion.
         """
         if isinstance(self.__metric, str):
-            if self.__metric in ["mean", "fraction"]:
+            if self.__metric in ["mean", "fraction", "median"]:
                 val = 0
         else:
             val = self.__metric(np.array([1]), np.array([1]))
@@ -370,14 +375,13 @@ class BootstrapStats:
             if a_size != b_size:
                 err: str = f"Paired groups must have equal sizes, have - {len(group_a)} and {len(group_b)}"
                 raise ValueError(err)
-            idxs: np.ndarray = np.random.choice(np.arange(a_size))
+            idxs: np.ndarray = np.random.choice(np.arange(a_size), size=(self.__bs_size, a_size))
             return group_a[idxs], group_b[idxs]
         return (
             np.random.choice(group_a, size=(self.__bs_size, len(group_a))),
             np.random.choice(group_b, size=(self.__bs_size, len(group_b))),
         )
 
-    @filter_kwargs
     def fit(self, group_a: Iterable[float], group_b: Iterable[float]) -> None:
         """
         Make bootstrap samples from given groups.
@@ -400,9 +404,7 @@ class BootstrapStats:
         if isinstance(self.__metric, str):
             self.__handle_str_metric(bootstraped_a_group, bootstraped_b_group)
         else:
-            self.__metric_distribution = self.__metric(
-                np.mean(bootstraped_a_group, axis=1), np.mean(bootstraped_b_group, axis=1)
-            )
+            self.__metric_distribution = self.__metric(bootstraped_a_group, bootstraped_b_group)
 
     def min_of_distrbution(self) -> float:
         """
@@ -447,9 +449,9 @@ class BootstrapStats:
         alpha = pvalue_pkg.corrected_alpha(alpha, alternative)
         if not isinstance(alpha, float):
             alpha = np.array(alpha)
-
         left_bounds: np.ndarray = np.quantile(self.__metric_distribution, q=alpha / 2)
         right_bounds: np.ndarray = np.quantile(self.__metric_distribution, q=1 - alpha / 2)
+
         return pvalue_pkg.choose_from_bounds(
             left_bounds,
             right_bounds,
@@ -473,5 +475,5 @@ class BootstrapStats:
         """
         criterion_value: float = self.__handle_std_value()
         return pvalue_pkg.calculate_pvalue_by_interval(
-            BootstrapStats.confidence_interval, criterion_value, self=self, alternative=alternative
+            BootstrapStats.confidence_interval, criterion_value, self=self, alternative=alternative, precision=10e-15
         )

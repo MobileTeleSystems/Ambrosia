@@ -313,8 +313,9 @@ class Tester(ABToolAbstract):
             point_effect = np.mean(group_b) / np.mean(group_a) - 1
         else:
             raise ValueError("Set effect_type as 'absolute' or 'relative'")
-        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric)
-        bootstrap_handler.fit(group_a, group_b, **kwargs)
+        paired: bool = kwargs.pop("paired") if "paired" in kwargs else False
+        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric, paired=paired)
+        bootstrap_handler.fit(group_a, group_b)
         left_bounds, right_bounds = bootstrap_handler.confidence_interval(confidence_level=1 - alpha, **kwargs)
         pvalue = bootstrap_handler.pvalue_criterion(**kwargs)
         confidence_interval = list(zip(left_bounds, right_bounds))
