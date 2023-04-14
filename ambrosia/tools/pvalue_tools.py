@@ -157,9 +157,9 @@ def choose_from_bounds(
     cond_many: bool = isinstance(left_ci, Iterable)
     amount: int = len(left_ci) if cond_many else 1
     if alternative == "greater":
-        left_ci = np.ones(amount) * left_bound if cond_many else left_bound
-    if alternative == "less":
         right_ci = np.ones(amount) * right_bound if cond_many else right_bound
+    if alternative == "less":
+        left_ci = np.ones(amount) * left_bound if cond_many else left_bound
     return left_ci, right_ci
 
 
