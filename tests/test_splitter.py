@@ -217,6 +217,7 @@ def test_full_split_spark(ltv_and_retention_dataset, splitter_ltv_spark, factor,
     assert size_a == round(total_size * factor)
     assert size_b == round(total_size * (1 - factor))
 
+
 @pytest.mark.unit
 def test_splitter_load_from_config(ltv_and_retention_dataset):
     """
@@ -237,6 +238,7 @@ def test_splitter_load_from_config(ltv_and_retention_dataset):
     os.remove(store_path)
     assert split_res.equals(split_res_from_config)
 
+
 @pytest.mark.unit()
 @pytest.mark.parametrize("id_column", [None, "id"])
 def test_duplication_exception(id_column):
@@ -255,6 +257,7 @@ def test_duplication_exception(id_column):
         msg_part: str = f"Id column {id_column}"
     error_msg: str = f"{msg_part} contains duplicates, ids must be unique for split"
     assert str(exc_info.value) == error_msg
+
 
 @pytest.mark.unit()
 def test_duplication_exception_spark(local_spark_session, ltv_and_retention_dataset):
