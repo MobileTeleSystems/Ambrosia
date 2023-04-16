@@ -1,5 +1,21 @@
+#  Copyright 2022 MTS (Mobile Telesystems)
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 from typing import List, Tuple
 
+import numpy as np
+import pyspark.sql.functions as F
 import scipy.stats as sps
 from pyspark.sql.functions import col, row_number
 from pyspark.sql.window import Window
@@ -9,10 +25,8 @@ import ambrosia.tools.theoretical_tools as theory_pkg
 from ambrosia import types
 from ambrosia.spark_tools.theory import get_stats_from_table
 from ambrosia.tools.ab_abstract_component import ABStatCriterion
+from ambrosia.tools.configs import Effects
 from ambrosia.tools.import_tools import spark_installed
-
-if spark_installed():
-    import pyspark.sql.functions as F
 
 if spark_installed():
     import pyspark.sql.functions as F
@@ -120,12 +134,12 @@ class TtestIndCriterionSpark(ABSparkCriterion):
             self.__calc_and_cache_data_parameters(group_a, group_b, column)
         if effect_type == "absolute":
             p_value = sps.ttest_ind_from_stats(
-                self.data_stats["mean_group_a"],
-                self.data_stats["std_group_a"],
-                self.data_stats["nobs_group_a"],
                 self.data_stats["mean_group_b"],
                 self.data_stats["std_group_b"],
                 self.data_stats["nobs_group_b"],
+                self.data_stats["mean_group_a"],
+                self.data_stats["std_group_a"],
+                self.data_stats["nobs_group_a"],
                 **kwargs,
             ).pvalue
         elif effect_type == "relative":

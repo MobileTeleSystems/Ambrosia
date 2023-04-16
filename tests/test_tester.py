@@ -325,8 +325,15 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
 @pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
 @pytest.mark.parametrize("effect_type", ["absolute", "relative"])
 def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str, effect_type: str):
-    res_pandas = tester_on_ltv_retention.run(effect_type, "theory", as_table=False, alternative=alternative)
-    res_spark = tester_spark_ltv_ret.run(effect_type, "theory", as_table=False, alternative=alternative)
+    """
+    Test the Tester results for Spark and Pandas dataframe for equivalence.
+    """
+    res_pandas = tester_on_ltv_retention.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
+    res_spark = tester_spark_ltv_ret.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
     for j in range(len(res_pandas)):
         assert check_eq(res_pandas[j]["pvalue"], res_spark[j]["pvalue"])
         assert check_eq_int(res_pandas[j]["confidence_interval"], res_spark[j]["confidence_interval"])
