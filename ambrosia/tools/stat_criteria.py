@@ -26,14 +26,14 @@ from ambrosia.tools.ab_abstract_component import ABStatCriterion, StatCriterion
 
 def get_results_dict(alpha: float, pvalue: float, effect: float, conf_int: Tuple[float, float]):
     """
-    Returns dictionary with given values
+    Returns dictionary with given values.
     """
     return {"first_type_error": alpha, "pvalue": pvalue, "effect": effect, "confidence_interval": conf_int}
 
 
 def get_calc_effect_ttest(group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute"):
     """
-    Calculation effect for ttest
+    Calculation effect for ttest.
     """
     if effect_type == "absolute":
         return np.mean(group_b, axis=0) - np.mean(group_a, axis=0)
@@ -52,7 +52,7 @@ class TtestIndCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_ind(a=group_a, b=group_b, equal_var=False, **kwargs).pvalue
+            return sps.ttest_ind(a=group_b, b=group_a, equal_var=False, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", **kwargs)
             return pvalue
@@ -71,7 +71,7 @@ class TtestIndCriterion(ABStatCriterion):
         alternative: str = "two-sided",
     ):
         """
-        Helps handle different alternatives and dimension for student distribution
+        Helps handle different alternatives and dimension for student distribution.
         """
         alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, alternative)
         quantiles, std_error = theory_pkg.get_ttest_info(group_a, group_b, alpha_corrected)
@@ -127,7 +127,7 @@ class TtestRelCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_rel(a=group_a, b=group_b, **kwargs).pvalue
+            return sps.ttest_rel(a=group_b, b=group_a, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", dependent=True, **kwargs)
             return pvalue
@@ -208,13 +208,13 @@ class MannWhitneyCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.mannwhitneyu(x=group_a, y=group_b, **kwargs).pvalue
+            return sps.mannwhitneyu(x=group_b, y=group_a, **kwargs).pvalue
         else:
             raise ValueError(self._send_type_error_msg())
 
     def calculate_effect(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute"):
         if effect_type == "absolute":
-            return np.median(group_b, axis=0) - np.median(group_a, axis=0)
+            return np.median(group_b, axis=0) - np.median(group_a, axis=0)  # to discuss
         else:
             raise ValueError(self._send_type_error_msg())
 
@@ -243,7 +243,7 @@ class WilcoxonCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.wilcoxon(x=group_a, y=group_b, **kwargs).pvalue
+            return sps.wilcoxon(x=group_b, y=group_a, **kwargs).pvalue
         else:
             raise ValueError(self._send_type_error_msg())
 
