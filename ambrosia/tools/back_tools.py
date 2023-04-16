@@ -31,6 +31,9 @@ def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]
     return seed_sequence
 
 
+from ambrosia import types
+
+
 @contextlib.contextmanager
 def tqdm_joblib(tqdm_object):
     """

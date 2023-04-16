@@ -23,11 +23,17 @@ Mainly these functions are used in `Splitter` core class.
 from typing import List, Optional
 
 import pandas as pd
-import pyspark.sql.functions as spark_funcs
 
 import ambrosia.spark_tools.split_tools as split_spark
 import ambrosia.tools.split_tools as split_pandas
 from ambrosia import types
+from ambrosia.tools.import_tools import spark_installed
+
+# Avoid errors with not installed spark
+
+if spark_installed():
+    import pyspark.sql.functions as spark_funcs
+
 
 AVAILABLE: List[str] = ["pandas", "spark"]
 GROUPS_COLUMN: str = "group"
