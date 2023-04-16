@@ -1,10 +1,13 @@
+import os
 from typing import Dict
 
 import pandas as pd
 import pytest
 import yaml
 
-from ambrosia.designer import Designer, design, design_binary
+from ambrosia.designer import Designer, design, design_binary, load_from_config
+
+store_path: str = "tests/configs/dumped_designer.yaml"
 
 
 @pytest.mark.smoke
@@ -49,10 +52,10 @@ def test_corret_type(designer_simple_table, designer_ltv):
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_simple_table"), 736),
-        ("effect", pytest.lazy_fixture("designer_simple_table"), "54.3%"),
-        ("power", pytest.lazy_fixture("designer_simple_table"), "17.7%"),
-        ("size", pytest.lazy_fixture("designer_ltv"), 1552),
+        ("size", pytest.lazy_fixture("designer_simple_table"), 603),
+        ("effect", pytest.lazy_fixture("designer_simple_table"), "49.2%"),
+        ("power", pytest.lazy_fixture("designer_simple_table"), "20.7%"),
+        ("size", pytest.lazy_fixture("designer_ltv"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv"), "35.6%"),
     ],
@@ -105,7 +108,7 @@ def test_every_type_run(to_design, method, effects, sizes, designer_ltv):
     if method != "empiric":
         designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes)
     else:
-        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, parallel=False, bs_samples=10)
+        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, n_jobs=1, bs_samples=10)
 
 
 @pytest.mark.unit
@@ -119,18 +122,6 @@ def test_binary(to_design, effects, sizes, designer_ltv, designer_simple_table, 
     designer_ltv.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
     designer_simple_table.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
     designer_ltv_spark.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
-
-
-@pytest.mark.unit
-def test_config_constructor(ltv_and_retention_dataset, designer_ltv):
-    """
-    Config constructor testing
-    """
-    with open("./tests/config.yaml", "r") as stream:
-        designer_from_config = yaml.load(stream, Loader=yaml.Loader)
-    designer_from_config.set_dataframe(ltv_and_retention_dataset)
-    value_from_config = designer_from_config.run("size")
-    assert value_from_config.equals(designer_ltv.run("size"))
 
 
 @pytest.mark.unit
@@ -151,19 +142,31 @@ def test_design_function(ltv_and_retention_dataset, designer_ltv):
 @pytest.mark.parametrize("effects", [1.05, [1.01, 1.05]])
 @pytest.mark.parametrize("sizes", [200, [100, 200]])
 @pytest.mark.parametrize("beta", [0.2, [0.1, 0.2]])
-def test_design_binary_function(to_design, effects, sizes, beta):
+@pytest.mark.parametrize("method", ["theory", "binary"])
+@pytest.mark.parametrize("groups_ratio", [1.0, 1.5, 2.0, 5.0])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater"])
+def test_design_binary_function(to_design, effects, sizes, beta, method, groups_ratio, alternative):
     """
     Design binary function smoke test
     """
     pa: float = 0.3
-    design_binary(to_design=to_design, prob_a=pa, sizes=sizes, effects=effects, second_type_errors=beta)
+    design_binary(
+        to_design=to_design,
+        prob_a=pa,
+        sizes=sizes,
+        effects=effects,
+        second_type_errors=beta,
+        method=method,
+        groups_ratio=groups_ratio,
+        alternative=alternative,
+    )
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1552),
+        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1553),
         ("effect", pytest.lazy_fixture("designer_ltv_spark"), "17.6%"),
         ("power", pytest.lazy_fixture("designer_ltv_spark"), "35.6%"),
     ],
@@ -202,3 +205,51 @@ def test_not_available_dataframe():
     with pytest.raises(TypeError) as error:
         Designer(dataframe=2, metrics="abc", effects=1.2).run("size", "theory")
     assert str(error.value).startswith("Type of table must be one of")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "method, metric",
+    [
+        ("binary", "retention"),
+        ("theory", "retention"),
+        ("theory", "LTV"),
+        ("empiric", "LTV"),
+    ],
+)
+def test_more_alpha_less_size(designer_ltv, method, metric):
+    """
+    This test was added because argument first error was missed in designer binary method
+    """
+    results = []
+    for alpha in (0.2, 0.4, 0.6):
+        results.append(
+            designer_ltv.run(
+                to_design="size", method=method, metrics=metric, first_type_errors=alpha, effects=1.2
+            ).iloc[0, 0]
+        )
+    res02, res04, res06 = results
+    assert res02 > res04
+    assert res04 > res06
+
+
+@pytest.mark.unit
+def test_designer_load_from_config(ltv_and_retention_dataset):
+    """
+    Test Designer class dump and load from yaml abilities.
+    """
+    designer = Designer(dataframe=ltv_and_retention_dataset)
+    designer.set_method("theory")
+    designer.set_metrics("LTV")
+    designer.set_first_errors([0.1, 0.2, 0.3])
+    designer.set_second_errors([0.2, 0.4, 0.6])
+    designer.set_effects([1.2, 1.3])
+    res = designer.run(to_design="size")
+    with open(store_path, "w") as outfile:
+        yaml.dump(designer, outfile, default_flow_style=False)
+
+    designer_from_config = load_from_config(store_path)
+    designer_from_config.set_dataframe(ltv_and_retention_dataset)
+    res_from_config = designer_from_config.run(to_design="size")
+    os.remove(store_path)
+    assert res.equals(res_from_config)

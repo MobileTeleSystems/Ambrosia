@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Ambrosia"
-version = "0.2.0"
+version = "0.3.0"
 description = "A Python library for working with A/B tests."
 license = "Apache-2.0"
 authors = [
@@ -39,7 +39,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7.2, <3.10.4"
+python = ">=3.7.2, <3.11.0"
 jinja2 = "^3.0.0"
 joblib = "^1.1.0"
 nmslib = "^2.0.4"
@@ -52,6 +52,7 @@ scipy = "^1.6.3"
 tqdm = "^4.27.0"
 hyperopt = "^0.2.7"
 catboost = "^1.0.4"
+statsmodels = ">=0.13.0"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "1.6.0"
@@ -69,7 +70,7 @@ line-length = 120
 target-version = ['py37', 'py38', 'py39', 'py310']
 include = '\.pyi?$'
 exclude = '''
- 
+
 (
   /(
       \.eggs         # exclude a few common directories in the

@@ -13,3 +13,12 @@ def filter_kwargs(func):
         return func(*args, **correct_kwargs)
 
     return wrapper
+
+
+def tqdm_parallel_decorator(func):
+    def wrapper(progress_bar, *args, **kwargs):
+        output = func(*args, **kwargs)
+        progress_bar.update(1)
+        return output
+
+    return wrapper

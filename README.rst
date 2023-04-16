@@ -3,7 +3,7 @@
 Ambrosia
 ========
 
-|PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions|
+|PyPI| |PyPI License| |ReadTheDocs| |Tests| |Coverage| |Black| |Python Versions| |Telegram Channel|
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/ambrosia
     :target: https://pypi.org/project/ambrosia
@@ -11,7 +11,7 @@ Ambrosia
     :target: https://github.com/MobileTeleSystems/Ambrosia/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/ambrosia.svg
     :target: https://ambrosia.readthedocs.io
-.. |Tests| image:: https://img.shields.io/github/workflow/status/MobileTeleSystems/RecTools/Test/main?label=tests
+.. |Tests| image:: https://img.shields.io/github/actions/workflow/status/MobileTeleSystems/Ambrosia/test.yaml?branch=main
     :target: https://github.com/MobileTeleSystems/Ambrosia/actions/workflows/test.yaml?query=branch%3Amain+
 .. |Coverage| image:: https://codecov.io/gh/MobileTeleSystems/Ambrosia/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/MobileTeleSystems/Ambrosia
@@ -19,6 +19,8 @@ Ambrosia
     :target: https://github.com/psf/black
 .. |Python Versions| image:: https://img.shields.io/pypi/pyversions/ambrosia.svg
     :target: https://pypi.org/project/ambrosia  
+.. |Telegram Channel| image:: https://img.shields.io/badge/telegram-Ambrosia-blueviolet.svg?logo=telegram
+    :target: https://t.me/+Tkt43TNUUSAxNWNi
 
 .. shields end
 
