@@ -352,7 +352,7 @@ def test_paired_bootstrap(effect_type, alternative):
 
     data_a = pd.DataFrame({metrics: np.random.normal(loc=2.0, size=sample_size), column_groups: "A"})
     data_b = data_a.copy()
-    data_b[metrics] += 0.1 + np.random.normal(size=sample_size).clip(max=1, min=-1)
+    data_b[metrics] += 0.05 + np.random.normal(size=sample_size).clip(max=1, min=-1)
     data_b[column_groups] = "B"
     test_data = pd.concat([data_a, data_b])
 
