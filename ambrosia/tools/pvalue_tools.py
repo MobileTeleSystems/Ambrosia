@@ -114,9 +114,9 @@ def calculate_pvalue_by_delta_method(
         raise ValueError(f"Got unknown random variable transformation: {ADMISSIBLE_TRANSFORMATIONS}")
 
     if alternative == "less":
-        pvalue: float = sps.norm.sf(statistic)
-    elif alternative == "greater":
         pvalue: float = sps.norm.cdf(statistic)
+    elif alternative == "greater":
+        pvalue: float = sps.norm.sf(statistic)
     elif alternative == "two-sided":
         pvalue: float = 2 * min(sps.norm.cdf(statistic), sps.norm.sf(statistic))
     else:
@@ -157,9 +157,9 @@ def choose_from_bounds(
     cond_many: bool = isinstance(left_ci, Iterable)
     amount: int = len(left_ci) if cond_many else 1
     if alternative == "greater":
-        left_ci = np.ones(amount) * left_bound if cond_many else left_bound
-    if alternative == "less":
         right_ci = np.ones(amount) * right_bound if cond_many else right_bound
+    if alternative == "less":
+        left_ci = np.ones(amount) * left_bound if cond_many else left_bound
     return left_ci, right_ci
 
 
@@ -224,7 +224,7 @@ def calculate_intervals_by_delta_method(
 
 
 def calculate_pvalue_by_interval(
-    interval_function: Callable, criterion_value_label: float = 0, precision: float = 0.00001, **kwargs
+    interval_function: Callable, criterion_value_label: float = 0, precision: float = 10e-7, **kwargs
 ) -> float:
     """
     Calculate pvalue for confidence interval.
@@ -239,7 +239,7 @@ def calculate_pvalue_by_interval(
     criterion_value_label : float, default: ``0``
         This number indicates whether the null hypothesis should
         be rejected if it falls within the interval.
-    precision : float, default: ``0.00001``
+    precision : float, default: ``0.0000001``
         Precision for binary search solution.
 
     Returns

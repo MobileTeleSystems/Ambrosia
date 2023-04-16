@@ -42,7 +42,11 @@ def check_ids_duplicates(
     """
     indices: np.ndarray = dataframe[id_column].values if id_column is not None else dataframe.index
     if len(indices) > len(set(indices)):
-        raise ValueError(f"Id column {id_column} contains duplicates, ids must be unique for split")
+        if id_column is None:
+            msg_part: str = "Index"
+        else:
+            msg_part: str = f"Id column {id_column}"
+        raise ValueError(f"{msg_part} contains duplicates, ids must be unique for split")
 
 
 def get_integer_salt(salt: Optional[str]) -> int:

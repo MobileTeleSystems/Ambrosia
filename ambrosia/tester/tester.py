@@ -313,7 +313,8 @@ class Tester(ABToolAbstract):
             point_effect = np.mean(group_b) / np.mean(group_a) - 1
         else:
             raise ValueError("Set effect_type as 'absolute' or 'relative'")
-        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric)
+        paired: bool = kwargs.pop("paired") if "paired" in kwargs else False
+        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric, paired=paired)
         bootstrap_handler.fit(group_a, group_b)
         left_bounds, right_bounds = bootstrap_handler.confidence_interval(confidence_level=1 - alpha, **kwargs)
         pvalue = bootstrap_handler.pvalue_criterion(**kwargs)
@@ -408,6 +409,7 @@ class Tester(ABToolAbstract):
         """
         Apply first stage of multitest correction for first type errors.
         """
+        alphas = alphas.copy()
         if method == "bonferroni":
             alphas /= hypothesis_num
         return alphas
@@ -420,8 +422,11 @@ class Tester(ABToolAbstract):
         Apply second stage of multitest correction.
         """
         if method == "bonferroni":
-            result["pvalue"] *= hypothesis_num
+            result["pvalue"] = (result["pvalue"].values * hypothesis_num).clip(max=1)
             result["first_type_error"] *= hypothesis_num
+        result["confidence_interval"] = result.apply(
+            lambda row: row["confidence_interval"] if row["pvalue"] != 1.0 else (None, None), axis=1
+        )
         return result
 
     @staticmethod
@@ -524,8 +529,11 @@ class Tester(ABToolAbstract):
         """
         if isinstance(metrics, types.MetricNameType):
             metrics = [metrics]
-        if isinstance(first_errors, float):
-            first_errors = [first_errors]
+        if first_errors is not None:
+            if isinstance(first_errors, float):
+                first_errors = np.array([first_errors])
+            else:
+                first_errors = np.array(first_errors)
         if "alternative" in kwargs:
             pvalue_pkg.check_alternative(kwargs["alternative"])
 
@@ -550,18 +558,16 @@ class Tester(ABToolAbstract):
         chosen_args["effect_type"] = effect_type
         chosen_args["criterion"] = criterion
 
-        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2)))
-        correction_available: Optional[bool] = None
-        if hypothesis_num > 1:
+        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2))) * len(
+            chosen_args["metrics"]
+        )
+        if correction_method is not None and hypothesis_num > 1:
             if correction_method in AVAILABLE_MULTITEST_CORRECTIONS:
-                correction_available = True
+                chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
+                    chosen_args["alpha"], hypothesis_num, correction_method
+                )
             else:
                 raise ValueError(f"Choose correction method from {AVAILABLE_MULTITEST_CORRECTIONS}")
-
-        if correction_available:
-            chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
-                chosen_args["alpha"], hypothesis_num, correction_method
-            )
 
         result: types.TesterResult = {}
         # Variating over all pairs of groups - comb(n, 2)
@@ -578,7 +584,7 @@ class Tester(ABToolAbstract):
             result[test_name] = subresult
 
         result = Tester.as_table(result)
-        if correction_available:
+        if correction_method is not None and hypothesis_num > 1:
             result = Tester.__apply_second_stage_multitest_correction(result, hypothesis_num, correction_method)
         if not as_table:
             result = result.to_dict(orient="records")

@@ -73,7 +73,7 @@ class EmpiricHandler(SimpleDesigner):
             kwargs["group_sizes"] = kwargs["sample_sizes_a"]
             del kwargs["sample_sizes_a"]
             del kwargs["sample_sizes_b"]
-        return self._handle_cases(empiric_pkg.get_empirical_errors_table, empiric_spark.get_table_power, **kwargs)
+        return self._handle_cases(empiric_pkg.get_empirical_table_power, empiric_spark.get_table_power, **kwargs)
 
 
 def calc_prob_control_class(table: types.PassedDataType, metric: types.MetricNameType) -> float:
