@@ -17,7 +17,7 @@ from typing import Callable, List, Optional, Sequence
 import numpy as np
 import pandas as pd
 
-import ambrosia.tools as tools_pkg
+import ambrosia.tools.empirical_tools as emp_pkg
 from ambrosia import types
 
 EPSILON: float = 0.001
@@ -52,7 +52,7 @@ def __helper_inject_effect(
     """
     modified_samples_values: types.BootstrapedSamplesType = {}
     for metric, sampled_metric in sampled_metrics.items():
-        modified_samples_values[metric] = tools_pkg.empirical_tools.inject_effect(
+        modified_samples_values[metric] = emp_pkg.inject_effect(
             sampled_metric,
             sample_size_a=sample_size_a,
             effect=effect,
@@ -68,26 +68,30 @@ def __helper_get_power_for_bootstraped(
     sample_size: int,
     bound_size: int,
     alpha: float,
+    groups_ratio: float = 1.0,
     criterion: str = "ttest",
     random_seed: Optional[int] = None,
-    use_tqdm: bool = False,
-    parallel: bool = False,
+    n_jobs: int = 1,
     verbose: bool = False,
+    **kwargs,
 ) -> List[float]:
     """
     Calculate power for bootstraped samples.
     """
-    result_power = [None]
+    result_power = []
     for _, values in modified_samples.items():
-        power = 1 - tools_pkg.tools.eval_error(
-            np.vstack([values[:sample_size], values[bound_size : bound_size + sample_size]]),
+        sampled_metric_vals = np.vstack(
+            [values[:sample_size], values[bound_size : bound_size + int(groups_ratio * sample_size)]]
+        )
+        power = emp_pkg.eval_error(
+            sampled_metric_vals,
             sample_size_a=sample_size,
             alpha=alpha,
             mode=criterion,
             random_seed=random_seed,
-            use_tqdm=use_tqdm,
-            parallel=parallel,
+            n_jobs=n_jobs,
             verbose=verbose,
+            **kwargs,
         )
         result_power.append(power)
     return result_power
@@ -98,9 +102,8 @@ def estimate_power(power_function: Callable, **kwargs_power) -> float:
     Helps calc power with cases with cases with multioutput.
     """
     power_estimation = power_function(**kwargs_power)
-    # Power function can return [correctness, power]
     if isinstance(power_estimation, Sequence):
-        power_estimation = power_estimation[1]
+        power_estimation = power_estimation[0]
     return power_estimation
 
 
@@ -108,6 +111,7 @@ def helper_bin_search_upper_bound_size(
     power_function: Callable,
     power_level: float,
     groups_sizes_names: List[str],
+    groups_ratio: float = 1.0,
     **kwargs_power,
 ) -> int:
     """
@@ -118,6 +122,7 @@ def helper_bin_search_upper_bound_size(
     while power_estimation < power_level:
         for gr_name in groups_sizes_names:
             kwargs_power[gr_name] = 2**upper_bound_degree
+        kwargs_power[groups_sizes_names[-1]] = int(groups_ratio * kwargs_power[groups_sizes_names[-1]])
         power_estimation: float = estimate_power(power_function, **kwargs_power)
         upper_bound_degree += 1
     return upper_bound_degree
@@ -159,7 +164,7 @@ def helper_binary_search_optimal_effect(
             injection_method=injection_method,
             random_seed=kwargs_power["random_seed"],
         )
-        power_estimation: float = power_function(**kwargs_power, modified_samples=modified_samples)[1]
+        power_estimation: float = power_function(**kwargs_power, modified_samples=modified_samples)[0]
         if power_estimation >= power_level:
             right = middle
         else:

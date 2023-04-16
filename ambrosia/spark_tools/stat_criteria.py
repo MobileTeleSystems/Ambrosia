@@ -1,7 +1,5 @@
 from typing import List, Tuple
 
-import numpy as np
-import pyspark.sql.functions as F
 import scipy.stats as sps
 from pyspark.sql.functions import col, row_number
 from pyspark.sql.window import Window
@@ -11,8 +9,10 @@ import ambrosia.tools.theoretical_tools as theory_pkg
 from ambrosia import types
 from ambrosia.spark_tools.theory import get_stats_from_table
 from ambrosia.tools.ab_abstract_component import ABStatCriterion
-from ambrosia.tools.configs import Effects
 from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as F
 
 if spark_installed():
     import pyspark.sql.functions as F
