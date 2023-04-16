@@ -1,11 +1,14 @@
 from typing import List, Tuple
 
-import pyspark.sql.functions as F
 import scipy.stats as sps
 
 import ambrosia.tools.theoretical_tools as theory_pkg
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABStatCriterion
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as F
 
 
 class TtestIndCriterionSpark(ABStatCriterion):

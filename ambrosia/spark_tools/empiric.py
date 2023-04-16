@@ -16,7 +16,6 @@ from typing import Any, Dict, Iterable, List
 
 import numpy as np
 import pandas as pd
-import pyspark.sql.functions as spark_functions
 from joblib import Parallel, delayed, parallel_backend
 from tqdm.auto import tqdm
 
@@ -24,6 +23,10 @@ import ambrosia.spark_tools.theory as th_pkg
 import ambrosia.tools._lib._bootstrap_tools as solver_pkg
 import ambrosia.tools._lib._selection_aide as select_pkg
 from ambrosia import types
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as spark_functions
 
 BOOSTRAP_BASE_CONST: int = 10
 RANDOM_SAMPLE_SEED: int = 42
