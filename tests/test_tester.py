@@ -201,21 +201,37 @@ def test_criteria_ttest_different(effect_type):
 
 
 @pytest.mark.parametrize("criterion", ["ttest", "ttest_rel", "mw", "wilcoxon"])
-def test_kwargs_passing_theory(criterion, tester_on_ltv_retention):
+@pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less"), ("ltv", "less")])
+def test_kwargs_passing_theory(criterion, metrics, alternative, tester_on_ltv_retention):
     """
-    Test passing key word argument to run method
+    Test passing key word argument to run method for theoretical approach.
     """
-    old_pvalue = tester_on_ltv_retention.run(criterion=criterion, as_table=False)[2]["pvalue"]
-    alternative_pvalue = tester_on_ltv_retention.run(criterion=criterion, as_table=False, alternative="greater")[2][
-        "pvalue"
-    ]
+    old_pvalue = tester_on_ltv_retention.run(criterion=criterion, metrics=metrics, as_table=False)[0]["pvalue"]
+    alternative_pvalue = tester_on_ltv_retention.run(
+        criterion=criterion, metrics=metrics, as_table=False, alternative=alternative
+    )[0]["pvalue"]
+    assert old_pvalue >= alternative_pvalue
+
+
+@pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less")])
+def test_kwargs_passing_empiric(metrics, alternative, tester_on_ltv_retention):
+    """
+    Test passing key word argument to run method for empirical approach.
+    """
+    bootstrap_size: int = 10000
+    old_pvalue = tester_on_ltv_retention.run(
+        method="empiric", metrics=metrics, bootstrap_size=bootstrap_size, as_table=False
+    )[0]["pvalue"]
+    alternative_pvalue = tester_on_ltv_retention.run(
+        method="empiric", metrics=metrics, as_table=False, bootstrap_size=bootstrap_size, alternative=alternative
+    )[0]["pvalue"]
     assert old_pvalue >= alternative_pvalue
 
 
 @pytest.mark.parametrize("interval_type", ["yule", "yule_modif", "newcombe", "jeffrey", "agresti"])
 def test_kwargs_passing_binary(interval_type, tester_on_ltv_retention):
     """
-    Test passing key word argument to run method for binary metrics
+    Test passing key word argument to run method for binary metrics.
     """
     wald_interval = tester_on_ltv_retention.run("absolute", "binary", metrics="retention", as_table=False)[0][
         "confidence_interval"
@@ -250,10 +266,10 @@ def check_bound_intervals(int_center, int_less, int_gr, left_bound: float = -np.
     """
     Check bound of intervals for different alternatives
     """
-    assert int_gr[0] == left_bound
-    assert int_less[1] == right_bound
-    assert int_gr[1] < int_center[1]
-    assert int_less[0] > int_center[0]
+    assert int_less[0] == left_bound
+    assert int_gr[1] == right_bound
+    assert int_gr[0] > int_center[0]
+    assert int_less[1] < int_center[1]
 
 
 @pytest.mark.parametrize("effect_type", ["absolute"])
@@ -267,8 +283,8 @@ def test_alternative_change_binary(effect_type, interval_type, tester_on_ltv_ret
     )
     # mean retention A - 0.303
     # mean retention B - 0.399
-    assert pvalue_less < pvalue_gr
-    assert pvalue_center < pvalue_gr
+    assert pvalue_less > pvalue_center
+    assert pvalue_center > pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr, -1, 1)
 
@@ -288,7 +304,7 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
         as_table=False,
     )
     # Mean(group_a) > Mean(group_b) in this table
-    assert pvalue_less > pvalue_gr
-    assert pvalue_center > pvalue_gr
+    assert pvalue_less < pvalue_center
+    assert pvalue_center < pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr)
