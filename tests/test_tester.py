@@ -308,3 +308,31 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
     assert pvalue_center < pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr)
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater"])
+def test_paired_bootstrap(effect_type, alternative):
+    """
+    Compare pvalues and confidence intervals between paired and regular bootstrap
+    for generated dependent groups
+    """
+    sample_size = (1000,)
+    metrics = "metric"
+    column_groups = "group"
+
+    data_a = pd.DataFrame({metrics: np.random.normal(loc=2.0, size=sample_size), column_groups: "A"})
+    data_b = data_a.copy()
+    data_b[metrics] += 0.1 + np.random.normal(size=sample_size).clip(max=1, min=-1)
+    data_b[column_groups] = "B"
+    test_data = pd.concat([data_a, data_b])
+
+    tester = Tester(dataframe=test_data, metrics=metrics, column_groups=column_groups)
+    test_results_ind = tester.run(
+        effect_type=effect_type, method="empiric", paired=False, alternative=alternative, as_table=False
+    )
+    test_results_dep = tester.run(
+        effect_type=effect_type, method="empiric", paired=True, alternative=alternative, as_table=False
+    )
+    assert test_results_dep[0]["pvalue"] < test_results_ind[0]["pvalue"]
+    assert test_results_dep[0]["confidence_interval"][0] > test_results_ind[0]["confidence_interval"][0]
