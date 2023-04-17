@@ -8,6 +8,18 @@ from ambrosia.tester import Tester, test
 from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
 
 
+def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
+    if a == np.inf and b == np.inf:
+        return True
+    if a == -np.inf and b == -np.inf:
+        return True
+    return abs(a - b) < eps
+
+
+def check_eq_int(i1, i2) -> bool:
+    return check_eq(i1[0], i2[0]) and check_eq(i1[1], i2[1])
+
+
 @pytest.mark.smoke
 def test_instance():
     """
@@ -310,6 +322,23 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
     check_bound_intervals(int_center, int_less, int_gr)
 
 
+@pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str, effect_type: str):
+    """
+    Test the Tester results for Spark and Pandas dataframe for equivalence.
+    """
+    res_pandas = tester_on_ltv_retention.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
+    res_spark = tester_spark_ltv_ret.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
+    for j in range(len(res_pandas)):
+        assert check_eq(res_pandas[j]["pvalue"], res_spark[j]["pvalue"])
+        assert check_eq_int(res_pandas[j]["confidence_interval"], res_spark[j]["confidence_interval"])
+
+
 @pytest.mark.parametrize("effect_type", ["absolute", "relative"])
 @pytest.mark.parametrize("alternative", ["two-sided", "greater"])
 def test_paired_bootstrap(effect_type, alternative):
@@ -323,7 +352,7 @@ def test_paired_bootstrap(effect_type, alternative):
 
     data_a = pd.DataFrame({metrics: np.random.normal(loc=2.0, size=sample_size), column_groups: "A"})
     data_b = data_a.copy()
-    data_b[metrics] += 0.1 + np.random.normal(size=sample_size).clip(max=1, min=-1)
+    data_b[metrics] += 0.05 + np.random.normal(size=sample_size).clip(max=1, min=-1)
     data_b[column_groups] = "B"
     test_data = pd.concat([data_a, data_b])
 

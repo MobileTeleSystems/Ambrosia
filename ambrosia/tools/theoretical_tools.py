@@ -23,6 +23,7 @@ import statsmodels.stats.api as sms
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 from ambrosia import types
+from ambrosia.tools.configs import Alternatives
 
 from . import EFFECT_COL_NAME, FIRST_TYPE_ERROR_COL_NAME, GROUP_SIZE_COL_NAME, STAT_ERRORS_COL_NAME
 
@@ -57,6 +58,14 @@ def check_encode_alternative(alternative: str) -> str:
         raise ValueError(f"Alternative must be one of '{alternatives}'.")
     else:
         return statsmodels_alternatives_encoding[alternative]
+
+
+def unbiased_to_sufficient(std: float, size: int) -> float:
+    """
+    Transforms unbiased estimation of standard deviation to sufficient
+    (ddof = 1) => (ddof = 0)
+    """
+    return std * np.sqrt((size - 1) / size)
 
 
 def check_target_type(
@@ -732,6 +741,19 @@ def design_power(
     )
 
 
+def get_ttest_info_from_stats(
+    var_a: float, var_b: float, n_obs_a: int, n_obs_b: int, alpha: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Returns quantiles and standard deviation of Ttest criterion statistic
+    """
+    compound_se: float = np.sqrt(var_a / n_obs_a + var_b / n_obs_b)
+    denominator: float = (var_a / n_obs_a) ** 2 / (n_obs_a - 1) + (var_b / n_obs_b) ** 2 / (n_obs_b - 1)
+    dim: float = compound_se**2 / denominator
+    quantiles: np.ndarray = sps.t.ppf(1 - alpha / 2, df=dim)
+    return quantiles, compound_se
+
+
 def get_ttest_info(group_a: np.ndarray, group_b: np.ndarray, alpha: np.ndarray) -> Tuple[np.ndarray, float]:
     """
     Compute standart error and quatiles for ttest (Welch)
@@ -754,13 +776,7 @@ def get_ttest_info(group_a: np.ndarray, group_b: np.ndarray, alpha: np.ndarray) 
     """
     variance_group_a: float = group_a.var(ddof=1)
     variance_group_b: float = group_b.var(ddof=1)
-    compound_se: float = np.sqrt(variance_group_a / len(group_a) + variance_group_b / len(group_b))
-    denominator: float = (variance_group_a / len(group_a)) ** 2 / (len(group_a) - 1) + (
-        variance_group_b / len(group_b)
-    ) ** 2 / (len(group_b) - 1)
-    dim: float = compound_se**2 / denominator
-    quantiles: np.ndarray = sps.t.ppf(1 - alpha / 2, df=dim)
-    return quantiles, compound_se
+    return get_ttest_info_from_stats(variance_group_a, variance_group_b, len(group_a), len(group_b), alpha)
 
 
 def apply_delta_method_by_stats(
@@ -772,7 +788,7 @@ def apply_delta_method_by_stats(
     cov_groups: float = 0,
     transformation: str = "fraction",
     alpha: np.ndarray = np.array([FIRST_TYPE_ERROR]),
-    alternative: str = "two_sided",
+    alternative: str = "two-sided",
 ) -> Tuple[types.ManyIntervalType, float]:
     """
     Computation of pvalue and confidence intervals for each I type error bound (alpha)
@@ -873,3 +889,38 @@ def apply_delta_method(
         alpha,
         alternative=alternative,
     )
+
+
+def ttest_1samp_from_stats(
+    mean: float, std: float, n_obs: int, alternative: str = Alternatives.ts.value
+) -> Tuple[float, float]:
+    """
+    Implementation of ttest_1samp for stats, not from observations
+
+    Parameters
+    ----------
+    mean: float
+        Mean of samples
+    std: float
+        Standart deviation (consistent estimation)
+    n_obs: int
+        Amount of observations
+    alternative: str
+        One of two-sided, less, greater
+
+    Returns
+    -------
+    (statistic, pvalue): Tuple[float, float]
+    Statistic of criterion and pvalue
+    """
+    statistic: float = mean / std * np.sqrt(n_obs)
+
+    if alternative == Alternatives.gr.value:
+        pvalue: float = sps.t.sf(statistic, df=n_obs - 1)
+    elif alternative == Alternatives.less.value:
+        pvalue: float = sps.t.cdf(statistic, df=n_obs - 1)
+    elif alternative == Alternatives.ts.value:
+        pvalue: float = sps.t.cdf(-np.abs(statistic), df=n_obs - 1) + sps.t.sf(np.abs(statistic), df=n_obs - 1)
+    else:
+        Alternatives.raise_if_value_incorrect_enum(alternative)
+    return statistic, pvalue

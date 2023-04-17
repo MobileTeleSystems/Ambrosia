@@ -12,7 +12,6 @@ from ambrosia.tools.decorators import tqdm_parallel_decorator
 def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]]] = None) -> np.ndarray:
     """
     Create a seed sequence using ``numpy.random.SeedSequence`` class.
-
     Parameters
     ----------
     length : int
@@ -20,7 +19,6 @@ def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]
     entropy : Union[int,Iterable[int]], optional
         The entropy for creating a ``SeedSequence``.
         Used to get a deterministic result.
-
     Returns
     -------
     seed_sequence : List
@@ -29,9 +27,6 @@ def create_seed_sequence(length: int, entropy: Optional[Union[int, Iterable[int]
     rng = np.random.SeedSequence(entropy)
     seed_sequence: np.ndarray = rng.generate_state(length)
     return seed_sequence
-
-
-from ambrosia import types
 
 
 @contextlib.contextmanager
