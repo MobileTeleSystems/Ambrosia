@@ -15,11 +15,14 @@
 from typing import Iterable, Tuple
 
 import pandas as pd
-import pyspark.sql.functions as funcs
 import scipy.stats as sps
 
 import ambrosia.tools.theoretical_tools as theory_pkg
 from ambrosia import types
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as funcs
 
 
 def get_stats_from_table(dataframe: types.SparkDataFrame, column: types.ColumnNameType) -> Tuple[float, float]:

@@ -111,6 +111,7 @@ class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
 
     Notes
     -----
+
     Main methods for split:
 
     Simple:
@@ -127,50 +128,51 @@ class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
 
     Constructors:
 
-    >>> # Empty constructor
-    >>> splitter = Splitter()
-    >>> # Some data
-    >>> splitter = Splitter(dataframe=df,
-    >>>                     id_column='my_id_column',
-    >>>                     strat_columns=['gender', 'age'],
-    >>>                     test_group_ids=ids_for_B_group
-    >>> )
+        >>> # Empty constructor
+        >>> splitter = Splitter()
+        >>> # Some data
+        >>> splitter = Splitter(dataframe=df,
+        >>>                     id_column='my_id_column',
+        >>>                     strat_columns=['gender', 'age'],
+        >>>                     test_group_ids=ids_for_B_group
+        >>> )
 
     Setters:
 
-    >>> splitter.set_dataframe(dataframe)
-    >>> # You can pass string for pd.read_csv
-    >>> splitter.set_dataframe('name_of_table.csv')
-    >>> # Other setters
-    >>> splitter.set_group_size(1000)
-    >>> splitter.set_strat_columns(['age', 'region'])
+        >>> splitter.set_dataframe(dataframe)
+        >>> # You can pass string for pd.read_csv
+        >>> splitter.set_dataframe('name_of_table.csv')
+        >>> # Other setters
+        >>> splitter.set_group_size(1000)
+        >>> splitter.set_strat_columns(['age', 'region'])
 
     Run:
 
-    >>> splitter.run(method='hash', groups_size=10000)
-    >>> splitter.run(method='metric'
-    >>>              test_group_ids=b_group,
-    >>>              id_column='id',
-    >>>              strat_columns=['age', 'city']
-    >>>              fit_columns=['metric_history_column', 'other_metric']
-    >>>              method_meric='fast', # It is used as kwarg
-    >>>              norm='l2' # It is used as kwarg
-    >>> )
+        >>> splitter.run(method='hash', groups_size=10000)
+        >>> splitter.run(method='metric'
+        >>>              test_group_ids=b_group,
+        >>>              id_column='id',
+        >>>              strat_columns=['age', 'city']
+        >>>              fit_columns=['metric_history_column', 'other_metric']
+        >>>              method_meric='fast', # It is used as kwarg
+        >>>              norm='l2' # It is used as kwarg
+        >>> )
 
-    YAML config:
+    Load from yaml config:
 
     >>> config = '''
                 !splitter # <--- this is yaml tag (important!)
                     groups_size:
                         1000
-                    dataframe:
-                        ./data/table.csv
                     id_column:
                         id
                     strat_columns:
                         - age
                         - country
             '''
+    >>> splitter = yaml.load(config)
+    >>> # Or use the implmented function
+    >>> splitter = load_from_config(config)
     """
 
     yaml_tag = "!splitter"
@@ -217,6 +219,17 @@ class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         self.set_test_group_ids(test_group_ids)
         self.set_fit_columns(fit_columns)
         self.set_strat_columns(strat_columns)
+
+    def __getstate__(self):
+        """
+        Get the state of the object to serialize.
+        """
+        return dict(
+            id_column=self.__id_column,
+            groups_size=self.__groups_size,
+            fit_columns=self.__fit_columns,
+            strat_columns=self.__strat_columns,
+        )
 
     @classmethod
     def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):

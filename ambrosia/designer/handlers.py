@@ -24,7 +24,6 @@ import warnings
 from typing import List
 
 import pandas as pd
-import pyspark.sql.functions as spark_functions
 
 import ambrosia.spark_tools.empiric as empiric_spark
 import ambrosia.spark_tools.theory as theory_spark
@@ -32,6 +31,11 @@ import ambrosia.tools.theoretical_tools as theory_pkg
 import ambrosia.tools.tools as empiric_pkg
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import SimpleDesigner
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as spark_functions
+
 
 DATA: str = "dataframe"
 AVAILABLE: List[str] = ["pandas", "spark"]
@@ -69,7 +73,7 @@ class EmpiricHandler(SimpleDesigner):
             kwargs["group_sizes"] = kwargs["sample_sizes_a"]
             del kwargs["sample_sizes_a"]
             del kwargs["sample_sizes_b"]
-        return self._handle_cases(empiric_pkg.get_empirical_errors_table, empiric_spark.get_table_power, **kwargs)
+        return self._handle_cases(empiric_pkg.get_empirical_table_power, empiric_spark.get_table_power, **kwargs)
 
 
 def calc_prob_control_class(table: types.PassedDataType, metric: types.MetricNameType) -> float:

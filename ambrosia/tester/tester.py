@@ -42,6 +42,7 @@ from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, ABToolAbstract, DataframeHandler, StatCriterion
 
 from .binary_result_evaluation import binary_absolute_result, binary_relative_result
+from .handlers import TheoreticalTesterHandler, filter_spark_and_make_groups
 
 BOOTSTRAP_SIZE: int = 1000
 AVAILABLE: List[str] = ["pandas", "spark"]
@@ -225,7 +226,9 @@ class Tester(ABToolAbstract):
             "id_column": id_column,
         }
         self.__experiment_results = DataframeHandler()._handle_cases(
-            Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+            Tester.__filter_data,
+            filter_spark_and_make_groups,
+            **__filtering_kwargs,
         )
 
     def __init__(
@@ -288,11 +291,6 @@ class Tester(ABToolAbstract):
         }
         return experiment_results
 
-    def __filter_spark_data(self):
-        """
-        Function to handle setting of Spark data.
-        """
-
     @staticmethod
     def __bootstrap_result(
         group_a: types.GroupType,
@@ -313,7 +311,8 @@ class Tester(ABToolAbstract):
             point_effect = np.mean(group_b) / np.mean(group_a) - 1
         else:
             raise ValueError("Set effect_type as 'absolute' or 'relative'")
-        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric)
+        paired: bool = kwargs.pop("paired") if "paired" in kwargs else False
+        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric, paired=paired)
         bootstrap_handler.fit(group_a, group_b)
         left_bounds, right_bounds = bootstrap_handler.confidence_interval(confidence_level=1 - alpha, **kwargs)
         pvalue = bootstrap_handler.pvalue_criterion(**kwargs)
@@ -355,7 +354,7 @@ class Tester(ABToolAbstract):
         Function to handle the theoretical approach to testing.
         """
         criterion: Union[str, StatCriterion] = criterion if criterion is not None else "ttest"
-        if isinstance(criterion, str) & (criterion in AVAILABLE_AB_CRITERIA):
+        if isinstance(criterion, str) and (criterion in AVAILABLE_AB_CRITERIA):
             criterion = AVAILABLE_AB_CRITERIA[criterion]
         elif not (hasattr(criterion, "get_results") and callable(criterion.get_results)):
             raise ValueError(
@@ -368,6 +367,7 @@ class Tester(ABToolAbstract):
         """
         Function to handle run method on pandas dataframes.
         """
+        # TODO: add methods to enum
         accepted_methods: List[str] = ["theory", "empiric", "binary"]
         if method not in accepted_methods:
             raise ValueError(f'Choose method from {", ".join(accepted_methods)}')
@@ -376,14 +376,19 @@ class Tester(ABToolAbstract):
             a_values: np.ndarray = args["data_a_group"][metric].values
             b_values: np.ndarray = args["data_b_group"][metric].values
             if method == "theory":
-                sub_result = Tester.__theory_handler(
-                    a_values,
-                    b_values,
-                    np.array(args["alpha"]),
+                # TODO: Make it SolverClass ~ method
+                # solver = SolverClass(...)
+                # sub_result = solver.solve()
+                solver = TheoreticalTesterHandler(
+                    args["data_a_group"],
+                    args["data_b_group"],
+                    column=metric,
+                    alpha=np.array(args["alpha"]),
                     effect_type=args["effect_type"],
                     criterion=args["criterion"],
                     **kwargs,
                 )
+                sub_result = solver.solve()
             elif method == "empiric":
                 sub_result = Tester.__bootstrap_result(
                     a_values, b_values, np.array(args["alpha"]), effect_type=args["effect_type"], **kwargs
@@ -396,18 +401,13 @@ class Tester(ABToolAbstract):
         return result
 
     @staticmethod
-    def __pre_run_spark():
-        """
-        Function to handle run method on Spark dataframes.
-        """
-
-    @staticmethod
     def __apply_first_stage_multitest_correction(
         alphas: types.StatErrorType, hypothesis_num: int, method: str = "bonferroni"
     ) -> types.StatErrorType:
         """
         Apply first stage of multitest correction for first type errors.
         """
+        alphas = alphas.copy()
         if method == "bonferroni":
             alphas /= hypothesis_num
         return alphas
@@ -420,8 +420,11 @@ class Tester(ABToolAbstract):
         Apply second stage of multitest correction.
         """
         if method == "bonferroni":
-            result["pvalue"] *= hypothesis_num
+            result["pvalue"] = (result["pvalue"].values * hypothesis_num).clip(max=1)
             result["first_type_error"] *= hypothesis_num
+        result["confidence_interval"] = result.apply(
+            lambda row: row["confidence_interval"] if row["pvalue"] != 1.0 else (None, None), axis=1
+        )
         return result
 
     @staticmethod
@@ -524,10 +527,15 @@ class Tester(ABToolAbstract):
         """
         if isinstance(metrics, types.MetricNameType):
             metrics = [metrics]
-        if isinstance(first_errors, float):
-            first_errors = [first_errors]
+        if first_errors is not None:
+            if isinstance(first_errors, float):
+                first_errors = np.array([first_errors])
+            else:
+                first_errors = np.array(first_errors)
         if "alternative" in kwargs:
             pvalue_pkg.check_alternative(kwargs["alternative"])
+        else:
+            kwargs["alternative"] = "two-sided"
 
         __filtering_kwargs = {
             "dataframe": dataframe,
@@ -538,7 +546,7 @@ class Tester(ABToolAbstract):
         }
         if dataframe is not None:
             experiment_results = DataframeHandler()._handle_cases(
-                Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+                Tester.__filter_data, filter_spark_and_make_groups, **__filtering_kwargs
             )
 
         arguments_choice: types._PrepareArgumentsType = {
@@ -550,18 +558,16 @@ class Tester(ABToolAbstract):
         chosen_args["effect_type"] = effect_type
         chosen_args["criterion"] = criterion
 
-        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2)))
-        correction_available: Optional[bool] = None
-        if hypothesis_num > 1:
+        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2))) * len(
+            chosen_args["metrics"]
+        )
+        if correction_method is not None and hypothesis_num > 1:
             if correction_method in AVAILABLE_MULTITEST_CORRECTIONS:
-                correction_available = True
+                chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
+                    chosen_args["alpha"], hypothesis_num, correction_method
+                )
             else:
                 raise ValueError(f"Choose correction method from {AVAILABLE_MULTITEST_CORRECTIONS}")
-
-        if correction_available:
-            chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
-                chosen_args["alpha"], hypothesis_num, correction_method
-            )
 
         result: types.TesterResult = {}
         # Variating over all pairs of groups - comb(n, 2)
@@ -570,15 +576,13 @@ class Tester(ABToolAbstract):
             chosen_args["data_a_group"] = chosen_args["experiment_results"][group_a_label]
             chosen_args["data_b_group"] = chosen_args["experiment_results"][group_b_label]
             pre_run_args = (method, chosen_args)
-            subresult: types.TesterResult = DataframeHandler()._handle_on_table(
-                Tester.__pre_run, Tester.__pre_run_spark, chosen_args["data_a_group"], *pre_run_args, **kwargs
-            )
+            subresult: types.TesterResult = Tester.__pre_run(*pre_run_args, **kwargs)
             subresult["group_a_label"] = group_a_label
             subresult["group_b_label"] = group_b_label
             result[test_name] = subresult
 
         result = Tester.as_table(result)
-        if correction_available:
+        if correction_method is not None and hypothesis_num > 1:
             result = Tester.__apply_second_stage_multitest_correction(result, hypothesis_num, correction_method)
         if not as_table:
             result = result.to_dict(orient="records")

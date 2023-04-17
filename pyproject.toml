@@ -45,7 +45,7 @@ joblib = "^1.1.0"
 nmslib = "^2.0.4"
 numpy = ">=1.19.5, <2.0.0"
 pandas = ">=0.25.3, <2.0.0"
-pyspark = "^3.2"
+pyspark = { version = "^3.2", optional = true }
 PyYAML = "6.0"
 scikit-learn = "^1.0.2"
 scipy = "^1.6.3"
@@ -64,6 +64,9 @@ flake8-docstrings = "1.6.0"
 pytest = "7.1.2"
 pytest-cov = "3.0.0"
 pytest-lazy-fixture = "0.6.3"
+
+[tool.poetry.extras]
+spark = ["pyspark"]
 
 [tool.black]
 line-length = 120

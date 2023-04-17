@@ -68,7 +68,6 @@ def test_load_store_methods(data_nonlin_var):
     loaded_preprocessor = Preprocessor(data_nonlin_var, verbose=False)
     loaded_preprocessor.load_transformations(store_path)
     os.remove(store_path)
-    print(preprocessor.transformations())
     for transformer, loaded_transformer in zip(preprocessor.transformations(), loaded_preprocessor.transformations()):
         assert transformer.get_params_dict() == loaded_transformer.get_params_dict()
 
@@ -76,7 +75,7 @@ def test_load_store_methods(data_nonlin_var):
 @pytest.mark.unit()
 def test_transform_from_config(data_nonlin_var):
     """
-    Test load and store methods of Preprocessor for the number of transformations.
+    Test store and transform from config method of Preprocessor for the number of transformations.
     """
     preprocessor = Preprocessor(data_nonlin_var, verbose=False)
     transformed: pd.DataFrame = (
@@ -93,5 +92,28 @@ def test_transform_from_config(data_nonlin_var):
     preprocessor.store_transformations(store_path)
     loaded_preprocessor = Preprocessor(data_nonlin_var, verbose=False)
     transformed_by_config: pd.DataFrame = loaded_preprocessor.transform_from_config(store_path)
+    os.remove(store_path)
+    assert (transformed == transformed_by_config).all(None)
+
+
+@pytest.mark.unit()
+def test_store_load_config(data_for_agg):
+    """
+    Test load, store, apply methods of Preprocessor for the number of transformations.
+    """
+    preprocessor = Preprocessor(data_for_agg, verbose=False)
+    transformed: pd.DataFrame = (
+        preprocessor.aggregate(
+            groupby_columns="id",
+            agg_params={"watched": "sum", "sessions": "max", "gender": "simple", "platform": "mode"},
+        )
+        .robust(["watched", "sessions"], alpha=0.01)
+        .cuped("watched", by="sessions", transformed_name="watched_cuped")
+        .data()
+    )
+    preprocessor.store_transformations(store_path)
+    loaded_preprocessor = Preprocessor(data_for_agg, verbose=False)
+    loaded_preprocessor.load_transformations(store_path)
+    transformed_by_config: pd.DataFrame = loaded_preprocessor.apply_transformations()
     os.remove(store_path)
     assert (transformed == transformed_by_config).all(None)
