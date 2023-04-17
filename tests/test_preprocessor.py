@@ -68,7 +68,6 @@ def test_load_store_methods(data_nonlin_var):
     loaded_preprocessor = Preprocessor(data_nonlin_var, verbose=False)
     loaded_preprocessor.load_transformations(store_path)
     os.remove(store_path)
-    print(preprocessor.transformations())
     for transformer, loaded_transformer in zip(preprocessor.transformations(), loaded_preprocessor.transformations()):
         assert transformer.get_params_dict() == loaded_transformer.get_params_dict()
 
