@@ -82,7 +82,7 @@ class Tester(ABToolAbstract):
         at least two values, they will choose for labels.
     id_column : ColumnNameType, optional
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values. Fix P (detect difference for equal) to be less
         than threshold. Used to construct confidence intervals.
     metrics : MetricNameType, optional
@@ -103,7 +103,7 @@ class Tester(ABToolAbstract):
         Labels for experimental groups.
     id_column : ColumnNameType
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values.
     metrics : MetricNameType
         Columns of dataframe with experiment results.
@@ -159,7 +159,7 @@ class Tester(ABToolAbstract):
     >>>     columns_groups='groups',
     >>>     metrics=['ltv', 'retention']
     >>> )
-    >>> tester = Tester(metrics='retention', first_errors=[0.01, 0.05])
+    >>> tester = Tester(metrics='retention', first_type_errors=[0.01, 0.05])
     >>> # You can set a separate table containing information about
     >>> # the partitioning in the experiment
     >>> tester = tester = Tester(
@@ -198,11 +198,11 @@ class Tester(ABToolAbstract):
     def set_experiment_results(self, experiment_results: types.ExperimentResults) -> None:
         self.__experiment_results = experiment_results
 
-    def set_errors(self, first_errors: types.StatErrorType) -> None:
-        if isinstance(first_errors, float):
-            self.__alpha = np.array([first_errors])
+    def set_errors(self, first_type_errors: types.StatErrorType) -> None:
+        if isinstance(first_type_errors, float):
+            self.__alpha = np.array([first_type_errors])
         else:
-            self.__alpha = np.array(first_errors)
+            self.__alpha = np.array(first_type_errors)
 
     def set_metrics(self, metrics: types.MetricNamesType) -> None:
         if isinstance(metrics, types.MetricNameType):
@@ -239,7 +239,7 @@ class Tester(ABToolAbstract):
         column_groups: Optional[types.ColumnNameType] = None,
         group_labels: Optional[types.GroupLabelsType] = None,
         id_column: Optional[types.ColumnNameType] = None,
-        first_errors: types.StatErrorType = 0.05,
+        first_type_errors: types.StatErrorType = 0.05,
         metrics: Optional[types.MetricNamesType] = None,
     ):
         """
@@ -255,7 +255,7 @@ class Tester(ABToolAbstract):
             )
         else:
             self.set_experiment_results(experiment_results=experiment_results)
-        self.set_errors(first_errors)
+        self.set_errors(first_type_errors)
         self.set_metrics(metrics)
 
     @staticmethod
@@ -472,7 +472,7 @@ class Tester(ABToolAbstract):
         column_groups: Optional[str] = None,
         group_labels: Optional[types.GroupLabelsType] = None,
         metrics: Optional[types.MetricNamesType] = None,
-        first_errors: Optional[types.StatErrorType] = None,
+        first_type_errors: Optional[types.StatErrorType] = None,
         criterion: Optional[ABStatCriterion] = None,
         correction_method: Union[str, None] = "bonferroni",
         as_table: bool = True,
@@ -503,7 +503,7 @@ class Tester(ABToolAbstract):
             Labels for experimental groups.
         id_column : ColumnNameType
             Name of column with objects ids in ``df_mapping`` dataframe.
-        first_errors : StatErrorType, default: ``0.05``
+        first_type_errors : StatErrorType, default: ``0.05``
             I type errors values.
         metrics : MetricNameType
             Columns of dataframe with experiment results.
@@ -527,11 +527,11 @@ class Tester(ABToolAbstract):
         """
         if isinstance(metrics, types.MetricNameType):
             metrics = [metrics]
-        if first_errors is not None:
-            if isinstance(first_errors, float):
-                first_errors = np.array([first_errors])
+        if first_type_errors is not None:
+            if isinstance(first_type_errors, float):
+                first_type_errors = np.array([first_type_errors])
             else:
-                first_errors = np.array(first_errors)
+                first_type_errors = np.array(first_type_errors)
         if "alternative" in kwargs:
             pvalue_pkg.check_alternative(kwargs["alternative"])
         else:
@@ -552,7 +552,7 @@ class Tester(ABToolAbstract):
         arguments_choice: types._PrepareArgumentsType = {
             "experiment_results": (self.__experiment_results, experiment_results),
             "metrics": (self.__metrics, metrics),
-            "alpha": (self.__alpha, first_errors),
+            "alpha": (self.__alpha, first_type_errors),
         }
         chosen_args: types._UsageArgumentsType = Tester._prepare_arguments(arguments_choice)
         chosen_args["effect_type"] = effect_type
@@ -599,7 +599,7 @@ def test(
     column_groups: Optional[str] = None,
     group_labels: Optional[types.GroupLabelsType] = None,
     metrics: Optional[types.MetricNamesType] = None,
-    first_errors: Optional[types.StatErrorType] = None,
+    first_type_errors: Optional[types.StatErrorType] = None,
     criterion: Optional[ABStatCriterion] = None,
     correction_method: Union[str, None] = "bonferroni",
     as_table: bool = True,
@@ -635,7 +635,7 @@ def test(
         Labels for experimental groups.
     id_column : ColumnNameType
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values.
     metrics : MetricNameType
         Columns of dataframe with experiment results.
@@ -664,7 +664,7 @@ def test(
         column_groups=column_groups,
         group_labels=group_labels,
         metrics=metrics,
-        first_errors=first_errors,
+        first_type_errors=first_type_errors,
     ).run(
         effect_type=effect_type,
         method=method,

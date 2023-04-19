@@ -87,7 +87,7 @@ def test_coinf_interval_absolute(method, alpha, metrics, criterion, tester_on_lt
     Test that confidence interval contains 0 <=> pvalue < alpha
     """
     result = tester_on_ltv_retention.run(
-        "absolute", method=method, criterion=criterion, first_errors=alpha, metrics=metrics, as_table=False
+        "absolute", method=method, criterion=criterion, first_type_errors=alpha, metrics=metrics, as_table=False
     )[0]
     interval = result["confidence_interval"]
     pvalue = result["pvalue"]
@@ -106,7 +106,7 @@ def test_coinf_interval_relative(method, alpha, metrics, alternative, tester_on_
     result = tester_on_ltv_retention.run(
         "relative",
         method=method,
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         as_table=False,
         alternative=alternative,
@@ -130,7 +130,7 @@ def test_coinf_interval_bin_abs(alpha, metrics, interval_type, alternative, test
     result = tester_on_ltv_retention.run(
         "absolute",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         interval_type=interval_type,
         alternative=alternative,
@@ -154,7 +154,7 @@ def test_coinf_interval_bin_rel(alpha, metrics, alternative, tester_on_ltv_reten
     result = tester_on_ltv_retention.run(
         "relative",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         alternative=alternative,
         as_table=False,
@@ -186,11 +186,11 @@ def test_standalone_test_function(
         metrics=metrics,
         criterion=criterion,
         column_groups="group",
-        first_errors=alpha,
+        first_type_errors=alpha,
         as_table=False,
     )
     class_result = tester_on_ltv_retention.run(
-        effect_type, method, metrics=metrics, first_errors=alpha, criterion=criterion, as_table=False
+        effect_type, method, metrics=metrics, first_type_errors=alpha, criterion=criterion, as_table=False
     )
     assert function_result == class_result
 
