@@ -1,4 +1,2 @@
-"\n    !designer\n        effects: \n            - 1.2\n            - 0.9\n      \
-  \  sizes: \n            1000\n        first_type_errors: \n            - 0.05\n\
-  \            - 0.01\n        second_type_errors:\n            - 0.2\n          \
-  \  - 0.1\n        metrics: sum_dur\n"
+!designer {effects: [1.05, 1.1, 1.2], first_type_errors: [0.01, 0.05], method: theory,
+  metrics: [sum_dur, ln_vod_cnt], second_type_errors: [0.2], sizes: [1000, 3000, 7000]}

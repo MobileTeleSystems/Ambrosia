@@ -1,4 +1,0 @@
-"\n    !designer\n        effects: \n            - 1.2\n            - 0.9\n      \
-  \  sizes: \n            1000\n        first_type_errors: \n            - 0.05\n\
-  \            - 0.01\n        second_type_errors:\n            - 0.2\n          \
-  \  - 0.1\n        metrics: watched\n"

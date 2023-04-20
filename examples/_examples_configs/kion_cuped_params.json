@@ -1,7 +1,1 @@
-{
-    "target_column": "ln_vod_cnt",
-    "transformed_name": null,
-    "covariate_column": "sum_dur",
-    "theta": 5.0821173038763154e-08,
-    "bias": 3064365.6922
-}
+{"target_column": "ln_vod_cnt", "transformed_name": null, "covariate_column": "sum_dur", "theta": 5.0821173038763154e-08, "bias": 3064365.6922}
