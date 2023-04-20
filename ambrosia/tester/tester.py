@@ -44,7 +44,7 @@ from ambrosia.tools.ab_abstract_component import ABStatCriterion, ABToolAbstract
 from .binary_result_evaluation import binary_absolute_result, binary_relative_result
 from .handlers import TheoreticalTesterHandler, filter_spark_and_make_groups
 
-BOOTSTRAP_SIZE: int = 1000
+BOOTSTRAP_SIZE: int = 10000
 AVAILABLE: List[str] = ["pandas", "spark"]
 AVAILABLE_AB_CRITERIA: Dict[str, ABStatCriterion] = {
     "ttest": criteria_pkg.TtestIndCriterion,
@@ -313,7 +313,7 @@ class Tester(ABToolAbstract):
             raise ValueError("Set effect_type as 'absolute' or 'relative'")
         paired: bool = kwargs.pop("paired") if "paired" in kwargs else False
         bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric, paired=paired)
-        bootstrap_handler.fit(group_a, group_b)
+        bootstrap_handler.fit(group_a, group_b, **kwargs)
         left_bounds, right_bounds = bootstrap_handler.confidence_interval(confidence_level=1 - alpha, **kwargs)
         pvalue = bootstrap_handler.pvalue_criterion(**kwargs)
         confidence_interval = list(zip(left_bounds, right_bounds))
