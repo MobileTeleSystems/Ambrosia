@@ -1,5 +1,5 @@
 =================
-Experiment design
+Experiment Design
 =================
 
 *Ambrosia* offers tools for calculating A/B test parameters such as effect uplift,
@@ -29,11 +29,12 @@ groups size, and experiment statistical power, based on historical metrics value
 .. autofunction:: design_binary
 
 
-Examples using experiment design tools
---------------------------------------
+Examples of using experiment design tools
+-----------------------------------------
 
 .. nblinkgallery::
     :name: designer-examples
 
-    /pandas_examples/design_binary
-    /spark_examples/spark_api
+   /pandas_examples/03_pandas_designer
+   /pandas_examples/04_binary_design
+   /spark_examples/07_spark_designer

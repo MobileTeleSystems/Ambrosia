@@ -1,5 +1,5 @@
 ==================
-Effect measurement
+Effect Measurement
 ==================
 
 Tools for assessing the statistical significance of completed experiments
@@ -8,8 +8,8 @@ and calculating the experimental uplift value with corresponding confidence inte
 .. admonition:: Multiple testing correction
    :class: caution
 
-   Currently, if multiple groups are tested, these groups are compared in pairs and automatic 
-   Bonferroni correction is applied to all alpha values and confidence intervals.
+   Currently, if multiple hypothesis(number of variants combinations * number of metrics passed) are tested, 
+   these groups are compared in pairs and Bonferroni correction is applied to all p-values and confidence intervals.
 
 
 .. currentmodule:: ambrosia.tester
@@ -26,11 +26,11 @@ and calculating the experimental uplift value with corresponding confidence inte
    :members: run
 .. autofunction:: test
 
-Examples using testing tools
-----------------------------
+Examples of using testing tools
+-------------------------------
 
 .. nblinkgallery::
     :name: tester-examples
 
-    /pandas_examples/design_binary
-    /spark_examples/spark_api
+    /pandas_examples/06_pandas_tester
+    /spark_examples/09_spark_tester

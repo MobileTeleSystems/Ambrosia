@@ -1,5 +1,5 @@
 ================
-Groups splitting
+Groups Splitting
 ================
 
 The following classes and functions helps to split batch data into
@@ -26,11 +26,11 @@ experimental groups using different approaches.
 .. autofunction:: load_from_config
 .. autofunction:: split
 
-Examples using groups splitting tools
--------------------------------------
+Examples of using groups splitting tools
+----------------------------------------
 
 .. nblinkgallery::
     :name: splitter-examples
 
-    /pandas_examples/design_binary
-    /spark_examples/spark_api
+    /pandas_examples/05_pandas_splitter
+    /spark_examples/08_spark_splitter

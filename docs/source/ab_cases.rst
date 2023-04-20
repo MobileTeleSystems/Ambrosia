@@ -1,4 +1,4 @@
-A/B testing cases
+A/B Testing Cases
 -----------------
 
 Scenarios for using *Ambrosia* in A/B testing cases

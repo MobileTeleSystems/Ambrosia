@@ -7,7 +7,7 @@
 
 |
 
-**Explore further**
+:bolditalic:`Explore further`
 
-To better understand how to use *Ambrosia* in your project and learn about the functionality of the library, 
+To better understand how to use *Ambrosia* in your project and dive into the functionality of the library, 
 check out the :bolditalic:`Core Functionality` and :bolditalic:`Usage Examples` sections of this documentation.
