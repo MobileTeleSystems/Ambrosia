@@ -422,9 +422,6 @@ class Tester(ABToolAbstract):
         if method == "bonferroni":
             result["pvalue"] = (result["pvalue"].values * hypothesis_num).clip(max=1)
             result["first_type_error"] *= hypothesis_num
-        result["confidence_interval"] = result.apply(
-            lambda row: row["confidence_interval"] if row["pvalue"] != 1.0 else (None, None), axis=1
-        )
         return result
 
     @staticmethod
@@ -513,6 +510,8 @@ class Tester(ABToolAbstract):
             ttest for independent samples will be used.
         correction_method : Union[str, None], default: ``bonferroni``
             Method for pvalues and confidence intervals multitest correction.
+            Total number of hypothesis is equal to the number of
+            variants combinations * number of metrics passed.
         as_table : bool, default: ``True``
             Return the test results as a pandas dataframe.
             If ``False``, a list of dicts with results will be returned.
@@ -645,6 +644,8 @@ def test(
         ttest for independent samples will be used.
     correction_method : Union[str, None], default: ``bonferroni``
         Method for pvalues and confidence intervals multitest correction.
+        Total number of hypothesis is equal to the number of
+        variants combinations * number of metrics passed.
     as_table : bool, default: ``True``
         Return the test results as a pandas dataframe.
         If ``False``, a list of dicts with results will be returned.
