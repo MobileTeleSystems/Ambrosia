@@ -1,0 +1,7 @@
+!splitter
+fit_columns: null
+groups_size: 322
+id_column: object_id
+strat_columns:
+- l
+- e

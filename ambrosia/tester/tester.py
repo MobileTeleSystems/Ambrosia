@@ -42,8 +42,9 @@ from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, ABToolAbstract, DataframeHandler, StatCriterion
 
 from .binary_result_evaluation import binary_absolute_result, binary_relative_result
+from .handlers import TheoreticalTesterHandler, filter_spark_and_make_groups
 
-BOOTSTRAP_SIZE: int = 1000
+BOOTSTRAP_SIZE: int = 10000
 AVAILABLE: List[str] = ["pandas", "spark"]
 AVAILABLE_AB_CRITERIA: Dict[str, ABStatCriterion] = {
     "ttest": criteria_pkg.TtestIndCriterion,
@@ -56,7 +57,7 @@ AVAILABLE_MULTITEST_CORRECTIONS: List[str] = ["bonferroni"]
 
 class Tester(ABToolAbstract):
     """
-    Unit for experimental data test and evaluation.
+    Unit for evaluating the results of experiments.
 
     The experiment evaluation result contains:
         - Pvalue for the selected criterion
@@ -81,7 +82,7 @@ class Tester(ABToolAbstract):
         at least two values, they will choose for labels.
     id_column : ColumnNameType, optional
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values. Fix P (detect difference for equal) to be less
         than threshold. Used to construct confidence intervals.
     metrics : MetricNameType, optional
@@ -102,7 +103,7 @@ class Tester(ABToolAbstract):
         Labels for experimental groups.
     id_column : ColumnNameType
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values.
     metrics : MetricNameType
         Columns of dataframe with experiment results.
@@ -158,7 +159,7 @@ class Tester(ABToolAbstract):
     >>>     columns_groups='groups',
     >>>     metrics=['ltv', 'retention']
     >>> )
-    >>> tester = Tester(metrics='retention', first_errors=[0.01, 0.05])
+    >>> tester = Tester(metrics='retention', first_type_errors=[0.01, 0.05])
     >>> # You can set a separate table containing information about
     >>> # the partitioning in the experiment
     >>> tester = tester = Tester(
@@ -197,11 +198,11 @@ class Tester(ABToolAbstract):
     def set_experiment_results(self, experiment_results: types.ExperimentResults) -> None:
         self.__experiment_results = experiment_results
 
-    def set_errors(self, first_errors: types.StatErrorType) -> None:
-        if isinstance(first_errors, float):
-            self.__alpha = np.array([first_errors])
+    def set_errors(self, first_type_errors: types.StatErrorType) -> None:
+        if isinstance(first_type_errors, float):
+            self.__alpha = np.array([first_type_errors])
         else:
-            self.__alpha = np.array(first_errors)
+            self.__alpha = np.array(first_type_errors)
 
     def set_metrics(self, metrics: types.MetricNamesType) -> None:
         if isinstance(metrics, types.MetricNameType):
@@ -225,7 +226,9 @@ class Tester(ABToolAbstract):
             "id_column": id_column,
         }
         self.__experiment_results = DataframeHandler()._handle_cases(
-            Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+            Tester.__filter_data,
+            filter_spark_and_make_groups,
+            **__filtering_kwargs,
         )
 
     def __init__(
@@ -236,7 +239,7 @@ class Tester(ABToolAbstract):
         column_groups: Optional[types.ColumnNameType] = None,
         group_labels: Optional[types.GroupLabelsType] = None,
         id_column: Optional[types.ColumnNameType] = None,
-        first_errors: types.StatErrorType = 0.05,
+        first_type_errors: types.StatErrorType = 0.05,
         metrics: Optional[types.MetricNamesType] = None,
     ):
         """
@@ -252,7 +255,7 @@ class Tester(ABToolAbstract):
             )
         else:
             self.set_experiment_results(experiment_results=experiment_results)
-        self.set_errors(first_errors)
+        self.set_errors(first_type_errors)
         self.set_metrics(metrics)
 
     @staticmethod
@@ -288,11 +291,6 @@ class Tester(ABToolAbstract):
         }
         return experiment_results
 
-    def __filter_spark_data(self):
-        """
-        Function to handle setting of Spark data.
-        """
-
     @staticmethod
     def __bootstrap_result(
         group_a: types.GroupType,
@@ -313,8 +311,9 @@ class Tester(ABToolAbstract):
             point_effect = np.mean(group_b) / np.mean(group_a) - 1
         else:
             raise ValueError("Set effect_type as 'absolute' or 'relative'")
-        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric)
-        bootstrap_handler.fit(group_a, group_b)
+        paired: bool = kwargs.pop("paired") if "paired" in kwargs else False
+        bootstrap_handler = empirical_pkg.BootstrapStats(bootstrap_size=bootstrap_size, metric=metric, paired=paired)
+        bootstrap_handler.fit(group_a, group_b, **kwargs)
         left_bounds, right_bounds = bootstrap_handler.confidence_interval(confidence_level=1 - alpha, **kwargs)
         pvalue = bootstrap_handler.pvalue_criterion(**kwargs)
         confidence_interval = list(zip(left_bounds, right_bounds))
@@ -355,7 +354,7 @@ class Tester(ABToolAbstract):
         Function to handle the theoretical approach to testing.
         """
         criterion: Union[str, StatCriterion] = criterion if criterion is not None else "ttest"
-        if isinstance(criterion, str) & (criterion in AVAILABLE_AB_CRITERIA):
+        if isinstance(criterion, str) and (criterion in AVAILABLE_AB_CRITERIA):
             criterion = AVAILABLE_AB_CRITERIA[criterion]
         elif not (hasattr(criterion, "get_results") and callable(criterion.get_results)):
             raise ValueError(
@@ -368,6 +367,7 @@ class Tester(ABToolAbstract):
         """
         Function to handle run method on pandas dataframes.
         """
+        # TODO: add methods to enum
         accepted_methods: List[str] = ["theory", "empiric", "binary"]
         if method not in accepted_methods:
             raise ValueError(f'Choose method from {", ".join(accepted_methods)}')
@@ -376,14 +376,19 @@ class Tester(ABToolAbstract):
             a_values: np.ndarray = args["data_a_group"][metric].values
             b_values: np.ndarray = args["data_b_group"][metric].values
             if method == "theory":
-                sub_result = Tester.__theory_handler(
-                    a_values,
-                    b_values,
-                    np.array(args["alpha"]),
+                # TODO: Make it SolverClass ~ method
+                # solver = SolverClass(...)
+                # sub_result = solver.solve()
+                solver = TheoreticalTesterHandler(
+                    args["data_a_group"],
+                    args["data_b_group"],
+                    column=metric,
+                    alpha=np.array(args["alpha"]),
                     effect_type=args["effect_type"],
                     criterion=args["criterion"],
                     **kwargs,
                 )
+                sub_result = solver.solve()
             elif method == "empiric":
                 sub_result = Tester.__bootstrap_result(
                     a_values, b_values, np.array(args["alpha"]), effect_type=args["effect_type"], **kwargs
@@ -396,18 +401,13 @@ class Tester(ABToolAbstract):
         return result
 
     @staticmethod
-    def __pre_run_spark():
-        """
-        Function to handle run method on Spark dataframes.
-        """
-
-    @staticmethod
     def __apply_first_stage_multitest_correction(
         alphas: types.StatErrorType, hypothesis_num: int, method: str = "bonferroni"
     ) -> types.StatErrorType:
         """
         Apply first stage of multitest correction for first type errors.
         """
+        alphas = alphas.copy()
         if method == "bonferroni":
             alphas /= hypothesis_num
         return alphas
@@ -420,7 +420,7 @@ class Tester(ABToolAbstract):
         Apply second stage of multitest correction.
         """
         if method == "bonferroni":
-            result["pvalue"] *= hypothesis_num
+            result["pvalue"] = (result["pvalue"].values * hypothesis_num).clip(max=1)
             result["first_type_error"] *= hypothesis_num
         return result
 
@@ -469,7 +469,7 @@ class Tester(ABToolAbstract):
         column_groups: Optional[str] = None,
         group_labels: Optional[types.GroupLabelsType] = None,
         metrics: Optional[types.MetricNamesType] = None,
-        first_errors: Optional[types.StatErrorType] = None,
+        first_type_errors: Optional[types.StatErrorType] = None,
         criterion: Optional[ABStatCriterion] = None,
         correction_method: Union[str, None] = "bonferroni",
         as_table: bool = True,
@@ -500,7 +500,7 @@ class Tester(ABToolAbstract):
             Labels for experimental groups.
         id_column : ColumnNameType
             Name of column with objects ids in ``df_mapping`` dataframe.
-        first_errors : StatErrorType, default: ``0.05``
+        first_type_errors : StatErrorType, default: ``0.05``
             I type errors values.
         metrics : MetricNameType
             Columns of dataframe with experiment results.
@@ -510,6 +510,8 @@ class Tester(ABToolAbstract):
             ttest for independent samples will be used.
         correction_method : Union[str, None], default: ``bonferroni``
             Method for pvalues and confidence intervals multitest correction.
+            Total number of hypothesis is equal to the number of
+            variants combinations * number of metrics passed.
         as_table : bool, default: ``True``
             Return the test results as a pandas dataframe.
             If ``False``, a list of dicts with results will be returned.
@@ -524,10 +526,15 @@ class Tester(ABToolAbstract):
         """
         if isinstance(metrics, types.MetricNameType):
             metrics = [metrics]
-        if isinstance(first_errors, float):
-            first_errors = [first_errors]
+        if first_type_errors is not None:
+            if isinstance(first_type_errors, float):
+                first_type_errors = np.array([first_type_errors])
+            else:
+                first_type_errors = np.array(first_type_errors)
         if "alternative" in kwargs:
             pvalue_pkg.check_alternative(kwargs["alternative"])
+        else:
+            kwargs["alternative"] = "two-sided"
 
         __filtering_kwargs = {
             "dataframe": dataframe,
@@ -538,30 +545,28 @@ class Tester(ABToolAbstract):
         }
         if dataframe is not None:
             experiment_results = DataframeHandler()._handle_cases(
-                Tester.__filter_data, Tester.__filter_spark_data, **__filtering_kwargs
+                Tester.__filter_data, filter_spark_and_make_groups, **__filtering_kwargs
             )
 
         arguments_choice: types._PrepareArgumentsType = {
             "experiment_results": (self.__experiment_results, experiment_results),
             "metrics": (self.__metrics, metrics),
-            "alpha": (self.__alpha, first_errors),
+            "alpha": (self.__alpha, first_type_errors),
         }
         chosen_args: types._UsageArgumentsType = Tester._prepare_arguments(arguments_choice)
         chosen_args["effect_type"] = effect_type
         chosen_args["criterion"] = criterion
 
-        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2)))
-        correction_available: Optional[bool] = None
-        if hypothesis_num > 1:
+        hypothesis_num: int = len(list(itertools.combinations(chosen_args["experiment_results"], 2))) * len(
+            chosen_args["metrics"]
+        )
+        if correction_method is not None and hypothesis_num > 1:
             if correction_method in AVAILABLE_MULTITEST_CORRECTIONS:
-                correction_available = True
+                chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
+                    chosen_args["alpha"], hypothesis_num, correction_method
+                )
             else:
                 raise ValueError(f"Choose correction method from {AVAILABLE_MULTITEST_CORRECTIONS}")
-
-        if correction_available:
-            chosen_args["alpha"] = Tester.__apply_first_stage_multitest_correction(
-                chosen_args["alpha"], hypothesis_num, correction_method
-            )
 
         result: types.TesterResult = {}
         # Variating over all pairs of groups - comb(n, 2)
@@ -570,15 +575,13 @@ class Tester(ABToolAbstract):
             chosen_args["data_a_group"] = chosen_args["experiment_results"][group_a_label]
             chosen_args["data_b_group"] = chosen_args["experiment_results"][group_b_label]
             pre_run_args = (method, chosen_args)
-            subresult: types.TesterResult = DataframeHandler()._handle_on_table(
-                Tester.__pre_run, Tester.__pre_run_spark, chosen_args["data_a_group"], *pre_run_args, **kwargs
-            )
+            subresult: types.TesterResult = Tester.__pre_run(*pre_run_args, **kwargs)
             subresult["group_a_label"] = group_a_label
             subresult["group_b_label"] = group_b_label
             result[test_name] = subresult
 
         result = Tester.as_table(result)
-        if correction_available:
+        if correction_method is not None and hypothesis_num > 1:
             result = Tester.__apply_second_stage_multitest_correction(result, hypothesis_num, correction_method)
         if not as_table:
             result = result.to_dict(orient="records")
@@ -595,14 +598,16 @@ def test(
     column_groups: Optional[str] = None,
     group_labels: Optional[types.GroupLabelsType] = None,
     metrics: Optional[types.MetricNamesType] = None,
-    first_errors: Optional[types.StatErrorType] = None,
+    first_type_errors: Optional[types.StatErrorType] = None,
     criterion: Optional[ABStatCriterion] = None,
     correction_method: Union[str, None] = "bonferroni",
     as_table: bool = True,
     **kwargs,
 ) -> types.TesterResult:
     """
-    Standalone function used to get the results of an experiment.
+    Function wrapper around the ``Tester`` class.
+
+    Apply on the experimental data to get the results of an experiment.
 
     Creates an instance of the ``Tester`` class internally and execute
     run method with corresponding arguments.
@@ -629,7 +634,7 @@ def test(
         Labels for experimental groups.
     id_column : ColumnNameType
         Name of column with objects ids in ``df_mapping`` dataframe.
-    first_errors : StatErrorType, default: ``0.05``
+    first_type_errors : StatErrorType, default: ``0.05``
         I type errors values.
     metrics : MetricNameType
         Columns of dataframe with experiment results.
@@ -639,6 +644,8 @@ def test(
         ttest for independent samples will be used.
     correction_method : Union[str, None], default: ``bonferroni``
         Method for pvalues and confidence intervals multitest correction.
+        Total number of hypothesis is equal to the number of
+        variants combinations * number of metrics passed.
     as_table : bool, default: ``True``
         Return the test results as a pandas dataframe.
         If ``False``, a list of dicts with results will be returned.
@@ -658,7 +665,7 @@ def test(
         column_groups=column_groups,
         group_labels=group_labels,
         metrics=metrics,
-        first_errors=first_errors,
+        first_type_errors=first_type_errors,
     ).run(
         effect_type=effect_type,
         method=method,

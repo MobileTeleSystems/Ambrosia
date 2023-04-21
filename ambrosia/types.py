@@ -16,14 +16,30 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import pyspark
+
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark
 
 # PySpark types
 
-SparkSession = pyspark.sql.session.SparkSession
-SparkDataFrame = pyspark.sql.dataframe.DataFrame
-SparkColumn = pyspark.sql.column.Column
-SparkOrPandas = Union[SparkDataFrame, pd.DataFrame]
+
+class PySparkStub:
+    pass
+
+
+if spark_installed():
+    SparkSession = pyspark.sql.session.SparkSession
+    SparkDataFrame = pyspark.sql.dataframe.DataFrame
+    SparkColumn = pyspark.sql.column.Column
+    SparkOrPandas = Union[SparkDataFrame, pd.DataFrame]
+else:
+    SparkSession = PySparkStub
+    SparkDataFrame = PySparkStub
+    SparkColumn = PySparkStub
+    SparkOrPandas = PySparkStub
+
 
 # Global types
 

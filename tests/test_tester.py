@@ -8,6 +8,18 @@ from ambrosia.tester import Tester, test
 from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
 
 
+def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
+    if a == np.inf and b == np.inf:
+        return True
+    if a == -np.inf and b == -np.inf:
+        return True
+    return abs(a - b) < eps
+
+
+def check_eq_int(i1, i2) -> bool:
+    return check_eq(i1[0], i2[0]) and check_eq(i1[1], i2[1])
+
+
 @pytest.mark.smoke
 def test_instance():
     """
@@ -75,7 +87,7 @@ def test_coinf_interval_absolute(method, alpha, metrics, criterion, tester_on_lt
     Test that confidence interval contains 0 <=> pvalue < alpha
     """
     result = tester_on_ltv_retention.run(
-        "absolute", method=method, criterion=criterion, first_errors=alpha, metrics=metrics, as_table=False
+        "absolute", method=method, criterion=criterion, first_type_errors=alpha, metrics=metrics, as_table=False
     )[0]
     interval = result["confidence_interval"]
     pvalue = result["pvalue"]
@@ -94,7 +106,7 @@ def test_coinf_interval_relative(method, alpha, metrics, alternative, tester_on_
     result = tester_on_ltv_retention.run(
         "relative",
         method=method,
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         as_table=False,
         alternative=alternative,
@@ -118,7 +130,7 @@ def test_coinf_interval_bin_abs(alpha, metrics, interval_type, alternative, test
     result = tester_on_ltv_retention.run(
         "absolute",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         interval_type=interval_type,
         alternative=alternative,
@@ -142,7 +154,7 @@ def test_coinf_interval_bin_rel(alpha, metrics, alternative, tester_on_ltv_reten
     result = tester_on_ltv_retention.run(
         "relative",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         alternative=alternative,
         as_table=False,
@@ -174,11 +186,11 @@ def test_standalone_test_function(
         metrics=metrics,
         criterion=criterion,
         column_groups="group",
-        first_errors=alpha,
+        first_type_errors=alpha,
         as_table=False,
     )
     class_result = tester_on_ltv_retention.run(
-        effect_type, method, metrics=metrics, first_errors=alpha, criterion=criterion, as_table=False
+        effect_type, method, metrics=metrics, first_type_errors=alpha, criterion=criterion, as_table=False
     )
     assert function_result == class_result
 
@@ -201,21 +213,44 @@ def test_criteria_ttest_different(effect_type):
 
 
 @pytest.mark.parametrize("criterion", ["ttest", "ttest_rel", "mw", "wilcoxon"])
-def test_kwargs_passing_theory(criterion, tester_on_ltv_retention):
+@pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less"), ("ltv", "less")])
+def test_kwargs_passing_theory(criterion, metrics, alternative, tester_on_ltv_retention):
     """
-    Test passing key word argument to run method
+    Test passing key word argument to run method for theoretical approach.
     """
-    old_pvalue = tester_on_ltv_retention.run(criterion=criterion, as_table=False)[2]["pvalue"]
-    alternative_pvalue = tester_on_ltv_retention.run(criterion=criterion, as_table=False, alternative="greater")[2][
-        "pvalue"
-    ]
+    old_pvalue = tester_on_ltv_retention.run(criterion=criterion, metrics=metrics, as_table=False)[0]["pvalue"]
+    alternative_pvalue = tester_on_ltv_retention.run(
+        criterion=criterion, metrics=metrics, as_table=False, alternative=alternative
+    )[0]["pvalue"]
+    assert old_pvalue >= alternative_pvalue
+
+
+@pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less")])
+def test_kwargs_passing_empiric(metrics, alternative, tester_on_ltv_retention):
+    """
+    Test passing key word argument to run method for empirical approach.
+    """
+    random_seed: int = 33
+    old_pvalue = tester_on_ltv_retention.run(
+        method="empiric",
+        metrics=metrics,
+        random_seed=random_seed,
+        as_table=False,
+    )[0]["pvalue"]
+    alternative_pvalue = tester_on_ltv_retention.run(
+        method="empiric",
+        metrics=metrics,
+        as_table=False,
+        random_seed=random_seed,
+        alternative=alternative,
+    )[0]["pvalue"]
     assert old_pvalue >= alternative_pvalue
 
 
 @pytest.mark.parametrize("interval_type", ["yule", "yule_modif", "newcombe", "jeffrey", "agresti"])
 def test_kwargs_passing_binary(interval_type, tester_on_ltv_retention):
     """
-    Test passing key word argument to run method for binary metrics
+    Test passing key word argument to run method for binary metrics.
     """
     wald_interval = tester_on_ltv_retention.run("absolute", "binary", metrics="retention", as_table=False)[0][
         "confidence_interval"
@@ -250,10 +285,10 @@ def check_bound_intervals(int_center, int_less, int_gr, left_bound: float = -np.
     """
     Check bound of intervals for different alternatives
     """
-    assert int_gr[0] == left_bound
-    assert int_less[1] == right_bound
-    assert int_gr[1] < int_center[1]
-    assert int_less[0] > int_center[0]
+    assert int_less[0] == left_bound
+    assert int_gr[1] == right_bound
+    assert int_gr[0] > int_center[0]
+    assert int_less[1] < int_center[1]
 
 
 @pytest.mark.parametrize("effect_type", ["absolute"])
@@ -267,8 +302,8 @@ def test_alternative_change_binary(effect_type, interval_type, tester_on_ltv_ret
     )
     # mean retention A - 0.303
     # mean retention B - 0.399
-    assert pvalue_less < pvalue_gr
-    assert pvalue_center < pvalue_gr
+    assert pvalue_less > pvalue_center
+    assert pvalue_center > pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr, -1, 1)
 
@@ -288,7 +323,64 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
         as_table=False,
     )
     # Mean(group_a) > Mean(group_b) in this table
-    assert pvalue_less > pvalue_gr
-    assert pvalue_center > pvalue_gr
+    assert pvalue_less < pvalue_center
+    assert pvalue_center < pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr)
+
+
+@pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative: str, effect_type: str):
+    """
+    Test the Tester results for Spark and Pandas dataframe for equivalence.
+    """
+    res_pandas = tester_on_ltv_retention.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
+    res_spark = tester_spark_ltv_ret.run(
+        effect_type, "theory", correction_method=None, as_table=False, alternative=alternative
+    )
+    for j in range(len(res_pandas)):
+        assert check_eq(res_pandas[j]["pvalue"], res_spark[j]["pvalue"])
+        assert check_eq_int(res_pandas[j]["confidence_interval"], res_spark[j]["confidence_interval"])
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater"])
+def test_paired_bootstrap(effect_type, alternative):
+    """
+    Compare pvalues and confidence intervals between paired and regular bootstrap
+    for generated dependent groups
+    """
+    sample_size: Tuple = (1000,)
+    metrics: str = "metric"
+    column_groups: str = "group"
+    random_seed: int = 9
+    rng = np.random.default_rng(random_seed)
+
+    data_a = pd.DataFrame({metrics: rng.normal(loc=2.0, size=sample_size), column_groups: "A"})
+    data_b = data_a.copy()
+    data_b[metrics] += 0.1 + rng.normal(size=sample_size)
+    data_b[column_groups] = "B"
+    test_data = pd.concat([data_a, data_b])
+
+    tester = Tester(dataframe=test_data, metrics=metrics, column_groups=column_groups)
+    test_results_ind = tester.run(
+        effect_type=effect_type,
+        method="empiric",
+        paired=False,
+        alternative=alternative,
+        random_seed=random_seed,
+        as_table=False,
+    )
+    test_results_dep = tester.run(
+        effect_type=effect_type,
+        method="empiric",
+        paired=True,
+        alternative=alternative,
+        random_seed=random_seed,
+        as_table=False,
+    )
+    assert test_results_dep[0]["pvalue"] < test_results_ind[0]["pvalue"]
+    assert test_results_dep[0]["confidence_interval"][0] > test_results_ind[0]["confidence_interval"][0]

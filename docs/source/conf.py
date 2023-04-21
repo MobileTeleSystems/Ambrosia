@@ -16,7 +16,6 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../../"))
 
-
 # -- Project information -----------------------------------------------------
 
 project = "Ambrosia"
@@ -47,9 +46,21 @@ version = __version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "numpydoc", "sphinx_rtd_theme"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.mathjax",
+    "numpydoc",
+    "nbsphinx",
+    "nbsphinx_link",
+    "sphinx_gallery.load_style",
+    "sphinx_copybutton",
+    "sphinx.ext.autosectionlabel",
+]
 
 numpydoc_show_class_members = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
@@ -64,8 +75,16 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
-html_theme_options = {"display_version": True, "logo_only": True}
+html_theme = "furo"
+html_theme_options = {
+    "sidebar_hide_name": True,
+    "navigation_with_keys": True,
+    "top_of_page_button": "edit",
+    "source_repository": "https://github.com/MobileTeleSystems/Ambrosia/",
+    "source_branch": "main",
+    "source_directory": "docs/source/",
+}
+
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -73,3 +92,7 @@ html_theme_options = {"display_version": True, "logo_only": True}
 html_static_path = ["_static"]
 html_css_files = ["css/style.css"]
 html_logo = "_static/ambrosia.png"
+
+nbsphinx_execute = "never"
+autodoc_typehints = "none"
+autodoc_member_order = "bysource"

@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 """
 Experiment design methods.
 
@@ -48,10 +49,11 @@ BINARY_DESIGN_METHODS: List[str] = ["theory", "binary"]
 
 class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     """
-    Unit for experiments and pilots design.
+    Unit for experiments and pilots parameters design.
 
     Enables to design missing experiment parameters using historical data.
     The main related to each other designable parameters for a single metric are:
+
         - Effect (Minimal Detectible Effect):
             old_mean_metric_value * effect_value = new_mean_metric_value
         - Sample size:
@@ -123,8 +125,9 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     need in both groups to detect such effect.
 
     We can use ``Designer`` class in the following way:
-        >>> designer = Designer(dataframe=df, metric='retention', effect=1.033)
-        >>> designer.run("size")
+
+    >>> designer = Designer(dataframe=df, metric='retention', effect=1.033)
+    >>> designer.run("size")
 
     Note, that default values for errors are:
         ``first_type_error`` = ``0.05``
@@ -138,46 +141,49 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     -----
 
     Constructors:
-        >>> designer = Designer()
-        >>> # You can pass an Iterable or single object for some parameters
-        >>> designer = Designer(
-        >>>     dataframe=df,
-        >>>     sizes=[100, 200],
-        >>>     metrics='LTV',
-        >>>     effects=1.05
-        >>> )
-        >>> designer = Desginer(sizes=1000, metrics=['retention', 'LTV'])
-        >>> # You can use path to .csv table for pandas
-        >>> designer = Designer('./data/table.csv')
+
+    >>> designer = Designer()
+    >>> # You can pass an Iterable or single object for some parameters
+    >>> designer = Designer(
+    >>>     dataframe=df,
+    >>>     sizes=[100, 200],
+    >>>     metrics='LTV',
+    >>>     effects=1.05
+    >>> )
+    >>> designer = Desginer(sizes=1000, metrics=['retention', 'LTV'])
+    >>> # You can use path to .csv table for pandas
+    >>> designer = Designer('./data/table.csv')
 
     Setters:
-        >>> designer.set_first_errors([0.05, 0.01])
-        >>> desginer.set_dataframe(df)
+
+    >>> designer.set_first_errors([0.05, 0.01])
+    >>> desginer.set_dataframe(df)
 
     Run:
-        >>> # One can pass arguments and they will have higher priority
-        >>> designer.run('size', effects=1.1)
-        >>> designer.run('effect', sizes=[500, 1000], metrics='retention')
-        >>> # You can set method (watch below)
-        >>> designer.run('effect', sizes=[500, 1000], metrics='retention', method='binary')
+
+    >>> # One can pass arguments and they will have higher priority
+    >>> designer.run('size', effects=1.1)
+    >>> designer.run('effect', sizes=[500, 1000], metrics='retention')
+    >>> # You can set method (watch below)
+    >>> designer.run('effect', sizes=[500, 1000], metrics='retention', method='binary')
 
     Load from yaml config:
-        >>> config = '''
-                !splitter # <--- this is yaml tag (!important)
-                    effects:
-                        - 0.9
-                        - 1.05
-                    sizes:
-                        - 1000
-                    dataframe:
-                        ./data/table.csv
-            '''
-        >>> designer = yaml.load(config)
-        >>> # Or use the implmented function
-        >>> designer = load_from_config(config)
+
+    >>> config = '''
+            !splitter # <--- this is yaml tag (!important)
+                effects:
+                    - 0.9
+                    - 1.05
+                sizes:
+                    - 1000
+        '''
+    >>> designer = yaml.load(config)
+    >>> # Or use the implmented function
+    >>> designer = load_from_config(config)
 
     Use standalone function instead of a class:
-        >>> design('size', dataframe=df, effects=1.05, metrics='retention')
+
+    >>> design('size', dataframe=df, effects=1.05, metrics='retention')
     """
 
     # YAML tag for loading from configs
@@ -202,7 +208,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             self.__size = sizes
 
     def set_effects(self, effects: types.EffectType) -> None:
-        if isinstance(effects, float):
+        if isinstance(effects, (float, int)):
             self.__effect = [effects]
         else:
             self.__effect = effects
@@ -245,6 +251,19 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         self.set_metrics(metrics)
         self.set_dataframe(dataframe)
         self.set_method(method)
+
+    def __getstate__(self):
+        """
+        Get the state of the object to serialize.
+        """
+        return dict(
+            effects=self.__effect,
+            sizes=self.__size,
+            first_type_errors=self.__alpha,
+            second_type_errors=self.__beta,
+            metrics=self.__metrics,
+            method=self.__method,
+        )
 
     @classmethod
     def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
@@ -306,8 +325,9 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             kwargs["group_sizes"] = args[SIZE]
             kwargs["betas"] = np.array(args["beta"])
         elif label == POWER:
+            groups_ratio: float = kwargs.pop("groups_ratio") if "groups_ratio" in kwargs else 1.0
             kwargs["sample_sizes_a"] = args[SIZE]
-            kwargs["sample_sizes_b"] = args[SIZE]
+            kwargs["sample_sizes_b"] = [int(groups_ratio * size) for size in args[SIZE]]
             kwargs["effects"] = args[EFFECT]
         return Designer.__dataframe_handler(EmpiricHandler(), label, **kwargs)
 
@@ -405,13 +425,11 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             either as a number, this parameter could used to toggle.
         groups_ratio : float, default: ``1.0``
             Ratio between two groups.
-            Acceptable only for ``"theory"`` method!
         alternative : str, default: ``"two-sided"``
             Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
             or ``"less"``.
             ``"greater"`` - if effect is positive.
             ``"less"`` - if effect is negative.
-            Acceptable only for ``"theory"`` method!
         stabilizing_method : str, default: ``"asin"``
             Effect trasformation. Can be ``"asin"`` and ``"norm"``.
             For non-binary metrics: only ``"norm"`` is accceptable.
@@ -425,7 +443,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
             Table or dictionary with the results of parameter design for each
             metric.
         """
-        if isinstance(effects, float):
+        if isinstance(effects, (float, int)):
             effects = [effects]
         if isinstance(sizes, int):
             sizes = [sizes]
@@ -444,7 +462,6 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
         }
 
         designable_parameters: List[str] = [SIZE, EFFECT, POWER]
-
         if to_design == SIZE:
             arguments_choice[EFFECT] = (self.__effect, effects)
             arguments_choice["beta"] = (self.__beta, second_type_errors)
@@ -466,7 +483,7 @@ class Designer(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
 
 def load_from_config(yaml_config: str, loader: type = yaml.Loader) -> Designer:
     """
-    Create Designer class instance from yaml config.
+    Restore a ``Designer`` class instance from a yaml config.
 
     For yaml_config you can pass file name with config,
     it must ends with .yaml, for example: "config.yaml".
@@ -491,7 +508,12 @@ def design(
     **kwargs,
 ) -> types.DesignerResult:
     """
+    Function wrapper around the ``Designer`` class.
+
     Make experiment design based on historical data using passed arguments.
+
+    Creates an instance of the ``Designer`` class internally and execute
+    run method with corresponding arguments.
 
     Parameters
     ----------
@@ -528,13 +550,11 @@ def design(
         either as a number, this parameter could used to toggle.
     groups_ratio : float, default: ``1.0``
         Ratio between two groups.
-        Acceptable only for ``"theory"`` method!
     alternative : str, default: ``"two-sided"``
         Alternative hypothesis, can be ``"two-sided"``, ``"greater"``
         or ``"less"``.
         ``"greater"`` - if effect is positive.
         ``"less"`` - if effect is negative.
-        Acceptable only for ``"theory"`` method!
     stabilizing_method : str, default: ``"asin"``
         Effect trasformation. Can be ``"asin"`` and ``"norm"``.
         For non-binary metrics: only ``"norm"`` is accceptable.
@@ -610,7 +630,7 @@ def design_binary_size(
     result_table : pd.DataFrame
         Table with results of design.
     """
-    if isinstance(effects, float):
+    if isinstance(effects, (float, int)):
         effects = [effects]
     if isinstance(first_type_errors, float):
         first_type_errors = [first_type_errors]
@@ -649,6 +669,7 @@ def design_binary_effect(
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
     stabilizing_method: str = "asin",
+    as_numeric: bool = False,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -683,6 +704,9 @@ def design_binary_effect(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
     **kwargs : Dict
         Other keyword arguments.
 
@@ -704,6 +728,7 @@ def design_binary_effect(
             sample_sizes=sizes,
             first_errors=first_type_errors,
             second_errors=second_type_errors,
+            as_numeric=as_numeric,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
@@ -711,7 +736,12 @@ def design_binary_effect(
         )
     elif method == "binary":
         return bin_pkg.get_table_effect_on_sample_size(
-            p_a=prob_a, sample_sizes=sizes, first_errors=first_type_errors, second_errors=second_type_errors, **kwargs
+            p_a=prob_a,
+            sample_sizes=sizes,
+            first_errors=first_type_errors,
+            second_errors=second_type_errors,
+            as_numeric=as_numeric,
+            **kwargs,
         )
     else:
         raise ValueError(f"Choose valid method from {BINARY_DESIGN_METHODS}, got {method}")
@@ -726,6 +756,7 @@ def design_binary_power(
     groups_ratio: float = 1.0,
     alternative: str = "two-sided",
     stabilizing_method: str = "asin",
+    as_numeric: bool = False,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -760,6 +791,9 @@ def design_binary_power(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
+    as_numeric : bool, default: ``False``
+        The result of calculations can be obtained as a percentage string
+        either as a number, this parameter could used to toggle.
     **kwargs : Dict
         Other keyword arguments.
 
@@ -768,7 +802,7 @@ def design_binary_power(
     result_table : pd.DataFrame
         Table with results of design.
     """
-    if isinstance(effects, float):
+    if isinstance(effects, (int, float)):
         effects = [effects]
     if isinstance(sizes, int):
         sizes = [sizes]
@@ -781,6 +815,7 @@ def design_binary_power(
             sample_sizes=sizes,
             effects=effects,
             first_errors=first_type_errors,
+            as_numeric=as_numeric,
             target_type="binary",
             groups_ratio=groups_ratio,
             alternative=alternative,
@@ -792,6 +827,7 @@ def design_binary_power(
             sample_sizes=sizes,
             first_errors=first_type_errors,
             delta_relative_values=effects,
+            as_numeric=as_numeric,
             **kwargs,
         )
     else:
@@ -812,7 +848,8 @@ def design_binary(
     **kwargs,
 ) -> pd.DataFrame:
     """
-    Design desired parameter for binary metrics.
+    Design of experiment parameters for binary metrics based
+    on a known conversion value.
 
     Parameters
     ----------
@@ -848,7 +885,6 @@ def design_binary(
         For non-binary metrics: only ``"norm"`` is accceptable.
         For binary metrics: ``"norm"`` and ``"asin"``, but ``"asin"``
         is more robust and accurate.
-
     **kwargs : Dict
         Other keyword arguments.
 
