@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Version 0.4.1 (21.04.2023)
+---------------------------
+
+Hotfix for pyspark import in spark criteria.
+
 Version 0.4.0 (21.04.2023)
 ---------------------------
 
