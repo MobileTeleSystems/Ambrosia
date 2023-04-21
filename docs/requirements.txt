@@ -1,3 +1,7 @@
 sphinx
+sphinx_copybutton
+sphinx_gallery
+nbsphinx
+nbsphinx_link
 numpydoc
 furo
