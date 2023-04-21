@@ -32,14 +32,17 @@ Ambrosia
 .. title
 
 *Ambrosia* is a Python library for A/B tests design, split and effect measurement. 
-It provides rich set of methods for conducting full experimental A/B test pipeline. 
+It provides rich set of methods for conducting full A/B testing pipeline. 
+
+The project is intended for use in research and production environments 
+based on data in pandas and Spark format.
 
 .. functional
 
 Key functionality
 -----------------
 
-* Pilots design ✈
+* Pilots design 🛫
 * Multi-group split 🎳
 * Matching of new control group to the existing pilot 🎏
 * Experiments result evaluation as p-value, point estimate of effect and confidence interval 🎞
@@ -66,16 +69,24 @@ Stable version is released on every tag to ``main`` branch.
     
     pip install ambrosia 
 
+Starting from version ``0.4.0``, the ability to process PySpark data is optional and can be enabled 
+using ``pip`` extras during the installation.
+
+.. code:: bash
+    
+    pip install ambrosia[pyspark]
+
 .. usage
 
 Usage
 -----
 
 The main functionality of *Ambrosia* is contained in several core classes and methods, 
-which are separate for each stage of the experiment and very intuitive for users. 
+which are autonomic for each stage of an experiment and have very intuitive interface. 
+
+|
 
 Below is a brief overview example of using a set of three classes to conduct some simple experiment.
-
 
 **Designer**
 
