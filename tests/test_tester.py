@@ -87,7 +87,7 @@ def test_coinf_interval_absolute(method, alpha, metrics, criterion, tester_on_lt
     Test that confidence interval contains 0 <=> pvalue < alpha
     """
     result = tester_on_ltv_retention.run(
-        "absolute", method=method, criterion=criterion, first_errors=alpha, metrics=metrics, as_table=False
+        "absolute", method=method, criterion=criterion, first_type_errors=alpha, metrics=metrics, as_table=False
     )[0]
     interval = result["confidence_interval"]
     pvalue = result["pvalue"]
@@ -106,7 +106,7 @@ def test_coinf_interval_relative(method, alpha, metrics, alternative, tester_on_
     result = tester_on_ltv_retention.run(
         "relative",
         method=method,
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         as_table=False,
         alternative=alternative,
@@ -130,7 +130,7 @@ def test_coinf_interval_bin_abs(alpha, metrics, interval_type, alternative, test
     result = tester_on_ltv_retention.run(
         "absolute",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         interval_type=interval_type,
         alternative=alternative,
@@ -154,7 +154,7 @@ def test_coinf_interval_bin_rel(alpha, metrics, alternative, tester_on_ltv_reten
     result = tester_on_ltv_retention.run(
         "relative",
         method="binary",
-        first_errors=alpha,
+        first_type_errors=alpha,
         metrics=metrics,
         alternative=alternative,
         as_table=False,
@@ -186,11 +186,11 @@ def test_standalone_test_function(
         metrics=metrics,
         criterion=criterion,
         column_groups="group",
-        first_errors=alpha,
+        first_type_errors=alpha,
         as_table=False,
     )
     class_result = tester_on_ltv_retention.run(
-        effect_type, method, metrics=metrics, first_errors=alpha, criterion=criterion, as_table=False
+        effect_type, method, metrics=metrics, first_type_errors=alpha, criterion=criterion, as_table=False
     )
     assert function_result == class_result
 
@@ -230,12 +230,19 @@ def test_kwargs_passing_empiric(metrics, alternative, tester_on_ltv_retention):
     """
     Test passing key word argument to run method for empirical approach.
     """
-    bootstrap_size: int = 10000
+    random_seed: int = 33
     old_pvalue = tester_on_ltv_retention.run(
-        method="empiric", metrics=metrics, bootstrap_size=bootstrap_size, as_table=False
+        method="empiric",
+        metrics=metrics,
+        random_seed=random_seed,
+        as_table=False,
     )[0]["pvalue"]
     alternative_pvalue = tester_on_ltv_retention.run(
-        method="empiric", metrics=metrics, as_table=False, bootstrap_size=bootstrap_size, alternative=alternative
+        method="empiric",
+        metrics=metrics,
+        as_table=False,
+        random_seed=random_seed,
+        alternative=alternative,
     )[0]["pvalue"]
     assert old_pvalue >= alternative_pvalue
 
@@ -346,22 +353,34 @@ def test_paired_bootstrap(effect_type, alternative):
     Compare pvalues and confidence intervals between paired and regular bootstrap
     for generated dependent groups
     """
-    sample_size = (1000,)
-    metrics = "metric"
-    column_groups = "group"
+    sample_size: Tuple = (1000,)
+    metrics: str = "metric"
+    column_groups: str = "group"
+    random_seed: int = 9
+    rng = np.random.default_rng(random_seed)
 
-    data_a = pd.DataFrame({metrics: np.random.normal(loc=2.0, size=sample_size), column_groups: "A"})
+    data_a = pd.DataFrame({metrics: rng.normal(loc=2.0, size=sample_size), column_groups: "A"})
     data_b = data_a.copy()
-    data_b[metrics] += 0.05 + np.random.normal(size=sample_size).clip(max=1, min=-1)
+    data_b[metrics] += 0.1 + rng.normal(size=sample_size)
     data_b[column_groups] = "B"
     test_data = pd.concat([data_a, data_b])
 
     tester = Tester(dataframe=test_data, metrics=metrics, column_groups=column_groups)
     test_results_ind = tester.run(
-        effect_type=effect_type, method="empiric", paired=False, alternative=alternative, as_table=False
+        effect_type=effect_type,
+        method="empiric",
+        paired=False,
+        alternative=alternative,
+        random_seed=random_seed,
+        as_table=False,
     )
     test_results_dep = tester.run(
-        effect_type=effect_type, method="empiric", paired=True, alternative=alternative, as_table=False
+        effect_type=effect_type,
+        method="empiric",
+        paired=True,
+        alternative=alternative,
+        random_seed=random_seed,
+        as_table=False,
     )
     assert test_results_dep[0]["pvalue"] < test_results_ind[0]["pvalue"]
     assert test_results_dep[0]["confidence_interval"][0] > test_results_ind[0]["confidence_interval"][0]

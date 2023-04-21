@@ -1,0 +1,2 @@
+!designer {effects: [1.05, 1.1, 1.2], first_type_errors: [0.01, 0.05], method: theory,
+  metrics: [sum_dur, ln_vod_cnt], second_type_errors: [0.2], sizes: [1000, 3000, 7000]}

@@ -41,7 +41,7 @@ SPLITTING_BOUND_CONST: float = 0.5
 
 class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
     """
-    Unit for splitting data into groups.
+    Unit for creating experimental groups from batch data.
 
     Split your data into groups of selected size with respect to:
         - Stratification columns
@@ -349,7 +349,7 @@ class Splitter(yaml.YAMLObject, ABToolAbstract, metaclass=ABMetaClass):
 
 def load_from_config(yaml_config: str, loader: type = yaml.Loader) -> Splitter:
     """
-    Creates Splitter class instance from yaml config.
+    Restore a ``Splitter`` class instance from a yaml config.
 
     For yaml_config parameter you can pass file name with
     config, which must ends with .yaml, for example: "config.yaml".
@@ -376,7 +376,9 @@ def split(
     **kwargs,
 ) -> types.SplitterResult:
     """
-    Standalone function used to create splitted groups from the dataframe.
+    Function wrapper around the ``Splitter`` class.
+
+    Used to create splitted groups from the dataframe.
 
     Creates an instance of the ``Splitter`` class internally and execute
     run method with corresponding arguments.

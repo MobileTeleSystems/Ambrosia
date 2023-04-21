@@ -130,7 +130,7 @@ def estim_stat_criterion_power(
         raise ValueError(
             f"Choose correct criterion name from {list(AVAILABLE_AB_CRITERIA)} or pass correct custom class"
         )
-    power: float = np.mean(criterion().calculate_pvalue(b_group_metrics, a_group_metrics, **kwargs) <= alpha)
+    power: float = np.mean(criterion().calculate_pvalue(a_group_metrics, b_group_metrics, **kwargs) <= alpha)
     return power
 
 
@@ -401,7 +401,7 @@ class BootstrapStats:
         if isinstance(paired, bool):
             self.__paired = paired
         else:
-            raise ValueError(f"paired parameter can only take boolean values")
+            raise ValueError("Parameter paired can only take boolean values")
 
     def __handle_str_metric(self, bootstrap_a: np.ndarray, bootstrap_b: np.ndarray) -> None:
         """
@@ -425,20 +425,24 @@ class BootstrapStats:
             val = self.__metric(np.array([1]), np.array([1]))
         return val
 
-    def __handle_sampling(self, group_a: Iterable[float], group_b: Iterable[float]) -> Tuple[np.ndarray, np.ndarray]:
+    def __handle_sampling(
+        self, group_a: Iterable[float], group_b: Iterable[float], random_seed: Optional[int] = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(random_seed)
         if self.__paired:
             a_size, b_size = len(group_a), len(group_b)
             if a_size != b_size:
                 err: str = f"Paired groups must have equal sizes, have - {len(group_a)} and {len(group_b)}"
                 raise ValueError(err)
-            idxs: np.ndarray = np.random.choice(np.arange(a_size), size=(self.__bs_size, a_size))
+            idxs: np.ndarray = rng.choice(np.arange(a_size), size=(self.__bs_size, a_size))
             return group_a[idxs], group_b[idxs]
         return (
-            np.random.choice(group_a, size=(self.__bs_size, len(group_a))),
-            np.random.choice(group_b, size=(self.__bs_size, len(group_b))),
+            rng.choice(group_a, size=(self.__bs_size, len(group_a))),
+            rng.choice(group_b, size=(self.__bs_size, len(group_b))),
         )
 
-    def fit(self, group_a: Iterable[float], group_b: Iterable[float]) -> None:
+    @filter_kwargs
+    def fit(self, group_a: Iterable[float], group_b: Iterable[float], random_seed: Optional[int] = None) -> None:
         """
         Make bootstrap samples from given groups.
         Calculates and store empiric distribution for saved metric in __init__
@@ -449,6 +453,8 @@ class BootstrapStats:
             Values of A group
         group_b : Iterable[float]
             Values of B group
+        random_seed : int, optional
+            A seed for the deterministic outcome of random bootstrap processes.
 
         Returns
         -------
@@ -456,7 +462,7 @@ class BootstrapStats:
         """
         group_a = np.array(group_a)
         group_b = np.array(group_b)
-        bootstraped_a_group, bootstraped_b_group = self.__handle_sampling(group_a, group_b)
+        bootstraped_a_group, bootstraped_b_group = self.__handle_sampling(group_a, group_b, random_seed)
         if isinstance(self.__metric, str):
             self.__handle_str_metric(bootstraped_a_group, bootstraped_b_group)
         else:
