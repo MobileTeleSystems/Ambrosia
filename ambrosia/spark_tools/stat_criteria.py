@@ -15,10 +15,7 @@
 from typing import List, Tuple
 
 import numpy as np
-import pyspark.sql.functions as F
 import scipy.stats as sps
-from pyspark.sql.functions import col, row_number
-from pyspark.sql.window import Window
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
@@ -30,6 +27,8 @@ from ambrosia.tools.import_tools import spark_installed
 
 if spark_installed():
     import pyspark.sql.functions as F
+    from pyspark.sql.functions import col, row_number
+    from pyspark.sql.window import Window
 
 
 class ABSparkCriterion(ABStatCriterion):

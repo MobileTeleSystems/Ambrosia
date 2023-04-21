@@ -74,7 +74,7 @@ using ``pip`` extras during the installation.
 
 .. code:: bash
     
-    pip install ambrosia[pyspark]
+    pip install ambrosia[spark]
 
 .. usage
 
