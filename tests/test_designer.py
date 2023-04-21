@@ -1,10 +1,14 @@
-from typing import Dict
+import os
+from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 import pytest
 import yaml
 
-from ambrosia.designer import Designer, design, design_binary
+from ambrosia.designer import Designer, design, design_binary, load_from_config
+
+store_path: str = "tests/configs/dumped_designer.yaml"
 
 
 @pytest.mark.smoke
@@ -105,7 +109,7 @@ def test_every_type_run(to_design, method, effects, sizes, designer_ltv):
     if method != "empiric":
         designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes)
     else:
-        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, parallel=False, bs_samples=10)
+        designer_ltv.run(to_design, method=method, effects=effects, sizes=sizes, n_jobs=1, bs_samples=10)
 
 
 @pytest.mark.unit
@@ -119,18 +123,6 @@ def test_binary(to_design, effects, sizes, designer_ltv, designer_simple_table, 
     designer_ltv.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
     designer_simple_table.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
     designer_ltv_spark.run(to_design, method="binary", effects=effects, sizes=sizes, metrics="retention")
-
-
-@pytest.mark.unit
-def test_config_constructor(ltv_and_retention_dataset, designer_ltv):
-    """
-    Config constructor testing
-    """
-    with open("./tests/configs/designer_config.yaml", "r") as stream:
-        designer_from_config = yaml.load(stream, Loader=yaml.Loader)
-    designer_from_config.set_dataframe(ltv_and_retention_dataset)
-    value_from_config = designer_from_config.run("size")
-    assert value_from_config.equals(designer_ltv.run("size"))
 
 
 @pytest.mark.unit
@@ -240,3 +232,98 @@ def test_more_alpha_less_size(designer_ltv, method, metric):
     res02, res04, res06 = results
     assert res02 > res04
     assert res04 > res06
+
+
+@pytest.mark.unit
+def test_designer_load_from_config(ltv_and_retention_dataset):
+    """
+    Test Designer class dump and load from yaml abilities.
+    """
+    designer = Designer(dataframe=ltv_and_retention_dataset)
+    designer.set_method("theory")
+    designer.set_metrics("LTV")
+    designer.set_first_errors([0.1, 0.2, 0.3])
+    designer.set_second_errors([0.2, 0.4, 0.6])
+    designer.set_effects([1.2, 1.3])
+    res = designer.run(to_design="size")
+    with open(store_path, "w") as outfile:
+        yaml.dump(designer, outfile, default_flow_style=False)
+
+    designer_from_config = load_from_config(store_path)
+    designer_from_config.set_dataframe(ltv_and_retention_dataset)
+    res_from_config = designer_from_config.run(to_design="size")
+    os.remove(store_path)
+    assert res.equals(res_from_config)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("to_design", ["size"])
+@pytest.mark.parametrize("method", ["theory", "empiric"])
+@pytest.mark.parametrize("effects", [1.05, 1.1, 1.2])
+@pytest.mark.parametrize("sizes", [500, 1000])
+def test_alternative_parameter(to_design, method, effects, sizes, designer_ltv):
+    """
+    Test that alternative parameter changes design result in the right way.
+    """
+    random_seed: int = 42
+    results_list: List = []
+    alternative_list: List = ["two-sided", "greater"]
+    for alternative in alternative_list:
+        if method != "empiric":
+            res = designer_ltv.run(
+                to_design,
+                method=method,
+                effects=effects,
+                sizes=sizes,
+                alternative=alternative,
+            )
+        else:
+            res = designer_ltv.run(
+                to_design,
+                method=method,
+                effects=effects,
+                sizes=sizes,
+                alternative=alternative,
+                n_jobs=1,
+                bs_samples=10,
+                random_seed=random_seed,
+            )
+        results_list.append(res)
+
+    assert np.all(results_list[0] > results_list[1])
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("to_design", ["size"])
+@pytest.mark.parametrize("method", ["theory", "empiric"])
+@pytest.mark.parametrize("effects", [1.05, 1.1, 1.2])
+@pytest.mark.parametrize("sizes", [500, 1000])
+def test_groups_ratio_parameter(to_design, method, effects, sizes, designer_ltv):
+    """
+    Test that groups_ratio parameter changes design result in the right way.
+    """
+    random_seed: int = 42
+    results_list: List = []
+    groups_ratio_list: List = [1.0, 0.5, 10.0]
+    for groups_ratio in groups_ratio_list:
+        if method != "empiric":
+            res = designer_ltv.run(
+                to_design,
+                method=method,
+                effects=effects,
+                sizes=sizes,
+                groups_ratio=groups_ratio,
+            )
+        else:
+            res = designer_ltv.run(
+                to_design,
+                method=method,
+                effects=effects,
+                sizes=sizes,
+                groups_ratio=groups_ratio,
+                n_jobs=1,
+                bs_samples=10,
+                random_seed=random_seed,
+            )
+        results_list.append((1.0 + groups_ratio) * res)
+    assert np.all(results_list[0].values < results_list[1].values < results_list[2].values)

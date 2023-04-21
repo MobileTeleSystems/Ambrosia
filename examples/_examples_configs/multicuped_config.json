@@ -1,0 +1,1 @@
+{"target_column": "target", "transformed_name": "target_multicuped", "covariate_columns": ["feature_2", "feature_3"], "theta": [[3.034447972098987], [4.000919354909565]], "bias": 145.30970530527566}

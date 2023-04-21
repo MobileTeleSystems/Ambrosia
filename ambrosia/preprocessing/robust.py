@@ -271,7 +271,7 @@ class RobustPreprocessor(AbstractFittableTransformer):
 
 class IQRPreprocessor(AbstractFittableTransformer):
     """
-    Unit for iqr transformation of the data to exclude outliers.
+    Unit for IQR transformation of the data to exclude outliers.
 
     It cuts the points from the distribution which are behind the range of
     0.25 quantile - 1,5 * iqr and 0.75 quantile + 1,5 * iqr

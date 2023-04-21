@@ -28,6 +28,7 @@ reports:
 .venv:
 	@echo "Creating virtualenv...\t\t"
 	poetry install --no-root
+	poetry install --all-extras
 	@echo "[Installed]"
 
 install: .venv reports

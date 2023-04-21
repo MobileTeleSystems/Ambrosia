@@ -14,11 +14,14 @@
 
 from typing import Any, Dict, Iterable, Optional
 
-import pyspark.sql.functions as spark_funcs
-from pyspark.sql import Window
-
 import ambrosia.tools.ab_abstract_component as ab_abstract
 from ambrosia import types
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as spark_funcs
+    from pyspark.sql import Window
+
 
 EMPTY_VALUE: int = 0
 STRAT_GROUPS: str = "__ambrosia_strat"

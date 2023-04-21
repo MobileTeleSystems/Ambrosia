@@ -91,6 +91,17 @@ def results_ltv_retention_conversions() -> pd.DataFrame:
 
 @pytest.fixture()
 @pytest.mark.tester()
+def tester_spark_ltv_ret(local_spark_session, results_ltv_retention_conversions):
+    """
+    Spark tester
+    """
+    table = local_spark_session.createDataFrame(results_ltv_retention_conversions)
+    tester = Tester(dataframe=table, metrics=["retention", "conversions", "ltv"], column_groups="group")
+    return tester
+
+
+@pytest.fixture()
+@pytest.mark.tester()
 def tester_on_ltv_retention(results_ltv_retention_conversions):
     """
     Tester based on results_ltv_retention_conversions

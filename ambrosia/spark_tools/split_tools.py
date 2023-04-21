@@ -14,12 +14,14 @@
 
 from typing import Iterable, List, Optional
 
-import pyspark.sql.functions as spark_funcs
-from pyspark.sql import Window
-
 import ambrosia.spark_tools.stratification as strat_pkg
 from ambrosia import types
 from ambrosia.tools import split_tools
+from ambrosia.tools.import_tools import spark_installed
+
+if spark_installed():
+    import pyspark.sql.functions as spark_funcs
+    from pyspark.sql import Window
 
 HASH_COLUMN_NAME: str = "__hashed_ambrosia_column"
 GROUPS_COLUMN: str = "group"

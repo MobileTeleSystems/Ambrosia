@@ -445,7 +445,10 @@ class Preprocessor:
             Transformed inner data frame
         """
         for transformer in self.transformers:
-            transformer.transform(self.dataframe, inplace=True)
+            if isinstance(transformer, AggregatePreprocessor):
+                self.dataframe = transformer.transform(self.dataframe)
+            else:
+                transformer.transform(self.dataframe, inplace=True)
         return self.data()
 
     def transform_from_config(self, load_path: Path) -> pd.DataFrame:
