@@ -130,7 +130,7 @@ def estim_stat_criterion_power(
         raise ValueError(
             f"Choose correct criterion name from {list(AVAILABLE_AB_CRITERIA)} or pass correct custom class"
         )
-    power: float = np.mean(criterion().calculate_pvalue(b_group_metrics, a_group_metrics, **kwargs) <= alpha)
+    power: float = np.mean(criterion().calculate_pvalue(a_group_metrics, b_group_metrics, **kwargs) <= alpha)
     return power
 
 
