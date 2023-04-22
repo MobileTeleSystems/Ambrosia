@@ -390,6 +390,7 @@ def get_table_power_on_size_and_conversions(
     sample_sizes: Iterable[int] = (100,),
     amount: int = 10000,
     confidence_level: float = 0.95,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Table with power / empirical 1 type error = 1 - coverage, for fixed size and conversions.
@@ -432,6 +433,7 @@ def get_table_power_on_size_and_conversions(
                 "a_trials": trials,
                 "b_trials": trials,
                 "confidence_level": confidence_level,
+                **kwargs,
             }
             conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
             power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
@@ -456,9 +458,9 @@ def get_table_power_on_size_and_delta(
     delta_values: Iterable[float] = None,
     delta_relative_values: Iterable[float] = None,
     interval_type: str = "wald",
-    # alternative: str = "two-sided",
     amount: int = 10000,
     as_numeric: bool = False,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Table with power / empirical 1 type error = 1 - coverage for fixed size and effect.
@@ -522,6 +524,7 @@ def get_table_power_on_size_and_delta(
                 "b_trials": trials,
                 "confidence_level": 1 - alpha,
                 #    "alternative": alternative,
+                **kwargs,
             }
             conf_interval: types.ManyIntervalType = BinomTwoSampleCI.confidence_interval(**binom_kwargs)
             power: np.ndarray = helper_dir.__helper_calc_empirical_power(conf_interval)
@@ -541,6 +544,7 @@ def iterate_for_sample_size(
     p_b_values: Iterable[float],
     grid_delta: Iterable[float],
     amount: int,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Iterate over params for different sample size
@@ -567,6 +571,7 @@ def iterate_for_sample_size(
                     p_b=p_b,
                     amount=amount,
                     power=power,
+                    **kwargs,
                 )
                 table.loc[delta, f"({alpha}; {beta})"] = trials
     return table
@@ -580,6 +585,7 @@ def get_table_sample_size_on_effect(
     delta_values: Iterable[float] = None,
     delta_relative_values: Iterable[float] = None,
     amount: int = 10000,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Table for sample sizes with given effect and errors.
@@ -628,7 +634,9 @@ def get_table_sample_size_on_effect(
         grid_delta: np.ndarray = [f"{np.round((x - 1) * 100, ROUND_DIGITS_PERCENT)}%" for x in delta_relative_values]
     if not np.all((p_b_values >= 0) & (p_b_values <= 1)):
         raise ValueError(f"Probability of success in group B must be positive, not {p_b_values}")
-    table = iterate_for_sample_size(interval_type, first_errors, second_errors, p_a, p_b_values, grid_delta, amount)
+    table = iterate_for_sample_size(
+        interval_type, first_errors, second_errors, p_a, p_b_values, grid_delta, amount, **kwargs
+    )
     return table
 
 
@@ -641,6 +649,7 @@ def iterate_for_delta(
     amount: int,
     delta_type: str,
     as_numeric: bool = False,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Helps to find effect for different params.
@@ -662,6 +671,7 @@ def iterate_for_delta(
                     trials=trials,
                     amount=amount,
                     power=power,
+                    **kwargs,
                 )
                 if delta is not None and delta_type == "relative":
                     if as_numeric:
@@ -681,6 +691,7 @@ def get_table_effect_on_sample_size(
     amount: int = 10000,
     delta_type: str = "relative",
     as_numeric: bool = False,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Table for effects with given sample sizes and erros.
@@ -723,6 +734,6 @@ def get_table_effect_on_sample_size(
     if delta_type not in delta_types:
         raise ValueError(f"Delta type must be absolute relative, not {delta_type}")
     table: pd.DataFrame = iterate_for_delta(
-        interval_type, first_errors, second_errors, sample_sizes, p_a, amount, delta_type, as_numeric
+        interval_type, first_errors, second_errors, sample_sizes, p_a, amount, delta_type, as_numeric, **kwargs
     )
     return table

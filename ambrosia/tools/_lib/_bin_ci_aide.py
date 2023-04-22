@@ -42,7 +42,7 @@ def __helper_calc_empirical_power(conf_interval: types.ManyIntervalType) -> np.n
 
 
 def __helper_bin_search_for_size(
-    interval_type: str, confidence_level: float, p_a: float, p_b: float, amount: int, power: float
+    interval_type: str, confidence_level: float, p_a: float, p_b: float, amount: int, power: float, **kwargs
 ) -> int:
     """
     Make binary search for size to gain given power.
@@ -81,6 +81,7 @@ def __helper_bin_search_for_size(
             "a_trials": trials,
             "b_trials": trials,
             "confidence_level": confidence_level,
+            **kwargs,
         }
         conf_interval: types.IntervalType = bi.BinomTwoSampleCI.confidence_interval(**binom_kwargs)
         return __helper_calc_empirical_power(conf_interval)
@@ -112,6 +113,7 @@ def __helper_bin_search_for_delta(
     amount: int,
     power: float,
     epsilon: float = 0.0001,
+    **kwargs,
 ) -> Optional[float]:
     """
     Make binary search for delta to gain given power for
@@ -154,6 +156,7 @@ def __helper_bin_search_for_delta(
             "a_trials": trials,
             "b_trials": trials,
             "confidence_level": confidence_level,
+            **kwargs,
         }
         conf_interval: types.IntervalType = bi.BinomTwoSampleCI.confidence_interval(**binom_kwargs)
         return __helper_calc_empirical_power(conf_interval)

@@ -6,7 +6,15 @@ import pandas as pd
 import pytest
 import yaml
 
-from ambrosia.designer import Designer, design, design_binary, load_from_config
+from ambrosia.designer import (
+    Designer,
+    design,
+    design_binary,
+    design_binary_effect,
+    design_binary_power,
+    design_binary_size,
+    load_from_config,
+)
 
 store_path: str = "tests/configs/dumped_designer.yaml"
 
@@ -327,3 +335,57 @@ def test_groups_ratio_parameter(to_design, method, effects, sizes, designer_ltv)
             )
         results_list.append((1.0 + groups_ratio) * res)
     assert np.all(results_list[0].values < results_list[1].values < results_list[2].values)
+
+
+@pytest.mark.smoke
+def test_prior_designing_binary():
+    # Correct prior
+    n_correct: int = design_binary_size(
+        0.01,
+        effects=[1.01],
+        method="binary",
+        interval_type="bayes_beta",
+        n_success_conjugate=1,
+        n_failure_conjugate=1000002,
+    ).iloc[0, 0]
+    # Incorrect prior
+    n_incorrect: int = design_binary_size(
+        0.99,
+        effects=[1.01],
+        methdo="binary",
+        interval_type="bayes_beta",
+        n_success_conjugate=1,
+        n_failure_conjugate=1000002,
+    ).iloc[0, 0]
+    assert n_correct > n_incorrect
+
+    # Test effect
+    effect_correct = design_binary_effect(
+        0.1, sizes=[5000], interval_type="bayes_beta", n_success_conjugate=1, n_failure_conjugate=10, as_numeric=True
+    ).iloc[0, 0]
+    effect_incorrect = design_binary_effect(
+        0.9, sizes=[5000], interval_type="bayes_beta", n_success_conjugate=1, n_failure_conjugate=10, as_numeric=True
+    ).iloc[0, 0]
+    assert effect_correct > effect_incorrect
+
+    # Test power
+    power_correct = design_binary_power(
+        0.1,
+        sizes=5000,
+        effects=1.05,
+        interval_type="bayes_beta",
+        n_success_conjugate=1,
+        n_failure_conjugate=10,
+        as_numeric=True,
+    ).iloc[0, 0]
+    power_incorrect = design_binary_power(
+        0.9,
+        sizes=5000,
+        effects=1.05,
+        interval_type="bayes_beta",
+        n_success_conjugate=1,
+        n_failure_conjugate=10,
+        as_numeric=True,
+    ).iloc[0, 0]
+
+    assert power_correct < power_incorrect
