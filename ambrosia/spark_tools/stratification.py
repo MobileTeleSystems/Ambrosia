@@ -16,6 +16,7 @@ from typing import Any, Dict, Iterable, Optional
 
 import ambrosia.tools.ab_abstract_component as ab_abstract
 from ambrosia import types
+from ambrosia.spark_tools.constants import EMPTY_VALUE_PARTITION
 from ambrosia.tools.import_tools import spark_installed
 
 if spark_installed():
@@ -23,7 +24,6 @@ if spark_installed():
     from pyspark.sql import Window
 
 
-EMPTY_VALUE: int = 0
 STRAT_GROUPS: str = "__ambrosia_strat"
 
 
@@ -38,7 +38,7 @@ class Stratification(ab_abstract.StratificationUtil):
             self.strats = {ab_abstract.EmptyStratValue.NO_STRATIFICATION: dataframe}
             return
 
-        window = Window.orderBy(*columns).partitionBy(spark_funcs.lit(EMPTY_VALUE))
+        window = Window.orderBy(*columns).partitionBy(spark_funcs.lit(EMPTY_VALUE_PARTITION))
         with_groups = dataframe.withColumn(STRAT_GROUPS, spark_funcs.dense_rank().over(window))
         amount_of_strats: int = with_groups.select(spark_funcs.max(STRAT_GROUPS)).collect()[0][0]
 
