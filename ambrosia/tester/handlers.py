@@ -44,7 +44,7 @@ class PandasCriteria(enum.Enum):
 
 class SparkCriteria(enum.Enum):
     ttest: StatCriterion = spark_crit_pkg.TtestIndCriterionSpark
-    ttest_rel: StatCriterion = None  # spark_crit_pkg.TtestRelativeCriterionSpark it's in development now
+    ttest_rel: StatCriterion = spark_crit_pkg.TtestRelativeCriterionSpark
     mw: StatCriterion = None
     wilcoxon: StatCriterion = None
 
