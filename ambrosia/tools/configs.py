@@ -39,7 +39,7 @@ class AmbrosiaEnum(enum.Enum):
     @classmethod
     def raise_if_value_incorrect_enum(cls, value: tp.Any) -> None:
         if not cls.check_value_in_enum(value):
-            msg: str = f"Choose value from " + ", ".join(cls.get_all_enum_values())
+            msg: str = f"Choose value from {', '.join(cls.get_all_enum_values())}, your value - {value}"
             raise ValueError(msg)
 
 

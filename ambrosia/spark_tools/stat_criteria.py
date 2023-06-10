@@ -19,15 +19,19 @@ import scipy.stats as sps
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
+import ambrosia.tools.type_checks as cast_pkg
 from ambrosia import types
+from ambrosia.spark_tools.constants import EMPTY_VALUE_PARTITION
 from ambrosia.spark_tools.theory import get_stats_from_table
 from ambrosia.tools.ab_abstract_component import ABStatCriterion
 from ambrosia.tools.configs import Effects
 from ambrosia.tools.import_tools import spark_installed
+from ambrosia.tools.stat_criteria import TtestRelHelpful
 
 if spark_installed():
     import pyspark.sql.functions as F
-    from pyspark.sql.functions import col, row_number
+    from pyspark.sql.dataframe import DataFrame
+    from pyspark.sql.functions import col, mean, row_number, variance
     from pyspark.sql.window import Window
 
 
@@ -88,8 +92,7 @@ class TtestIndCriterionSpark(ABSparkCriterion):
     Unit for pyspark independent T-test.
     """
 
-    __implemented_effect_types: List = ["absolute", "relative"]
-    __type_error_msg: str = f"Choose effect type from {__implemented_effect_types}"
+    implemented_effect_types: List = ["absolute", "relative"]
     __data_parameters = ["mean_group_a", "mean_group_b", "std_group_a", "std_group_b", "nobs_group_a", "nobs_group_b"]
 
     def __calc_and_cache_data_parameters(
@@ -127,18 +130,18 @@ class TtestIndCriterionSpark(ABSparkCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
-        if effect_type not in TtestIndCriterionSpark.__implemented_effect_types:
-            raise ValueError(TtestIndCriterionSpark.__type_error_msg)
+        if effect_type not in self.implemented_effect_types:
+            raise ValueError(self._send_type_error_msg())
         if not self.parameters_are_cached:
             self.__calc_and_cache_data_parameters(group_a, group_b, column)
         if effect_type == "absolute":
             p_value = sps.ttest_ind_from_stats(
-                self.data_stats["mean_group_b"],
-                self.data_stats["std_group_b"],
-                self.data_stats["nobs_group_b"],
                 self.data_stats["mean_group_a"],
                 self.data_stats["std_group_a"],
                 self.data_stats["nobs_group_a"],
+                self.data_stats["mean_group_b"],
+                self.data_stats["std_group_b"],
+                self.data_stats["nobs_group_b"],
                 **kwargs,
             ).pvalue
         elif effect_type == "relative":
@@ -163,7 +166,7 @@ class TtestIndCriterionSpark(ABSparkCriterion):
                 "mean_group_a"
             ]
         else:
-            raise ValueError(TtestIndCriterionSpark.__type_error_msg)
+            raise ValueError(self._send_type_error_msg())
         return effect
 
     def calculate_conf_interval(
@@ -175,10 +178,12 @@ class TtestIndCriterionSpark(ABSparkCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if self.parameters_are_cached is not True:
             self.__calc_and_cache_data_parameters(group_a, group_b, column)
         if effect_type == "absolute":
-            alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, kwargs["alternative"])
+            alternative = "two-sided" if"alternative" not in kwargs else kwargs["alternative"]
+            alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, alternative)
             quantiles, sd = theory_pkg.get_ttest_info_from_stats(
                 var_a=self.data_stats["std_group_a"] ** 2,
                 var_b=self.data_stats["std_group_b"] ** 2,
@@ -189,15 +194,15 @@ class TtestIndCriterionSpark(ABSparkCriterion):
             mean = self.data_stats["mean_group_b"] - self.data_stats["mean_group_a"]
             left_ci: np.ndarray = mean - quantiles * sd
             right_ci: np.ndarray = mean + quantiles * sd
-            return self._make_ci(left_ci, right_ci, kwargs["alternative"])
+            return self._make_ci(left_ci, right_ci, alternative)
         elif effect_type == "relative":
             conf_interval = self._apply_delta_method(alpha, **kwargs)[0]
             return conf_interval
         else:
-            raise ValueError(TtestIndCriterionSpark.__type_error_msg)
+            raise ValueError(self._send_type_error_msg())
 
 
-class TtestRelativeCriterionSpark(ABSparkCriterion):
+class TtestRelativeCriterionSpark(ABSparkCriterion, TtestRelHelpful):
     """
     Relative ttest for spark
     """
@@ -213,15 +218,23 @@ class TtestRelativeCriterionSpark(ABSparkCriterion):
     def _calc_and_cache_data_parameters(
         self, group_a: types.SparkDataFrame, group_b: types.SparkDataFrame, column: types.ColumnNameType
     ) -> None:
-        a_ = (
+        col_a: str = self._rename_col(column, "a")
+        col_b: str = self._rename_col(column, "b")
+        a_: DataFrame = (
             group_a.withColumn(self.__ord_col, F.lit(1))
-            .withColumn(self.__add_index_name, row_number().over(Window().orderBy(self.__ord_col)))
-            .withColumnRenamed(column, self._rename_col(column, "a"))
+            .withColumn(
+                self.__add_index_name,
+                row_number().over(Window().orderBy(self.__ord_col).partitionBy(F.lit(EMPTY_VALUE_PARTITION))),
+            )
+            .withColumnRenamed(column, col_a)
         )
-        b_ = (
+        b_: DataFrame = (
             group_b.withColumn(self.__ord_col, F.lit(1))
-            .withColumn(self.__add_index_name, row_number().over(Window().orderBy(self.__ord_col)))
-            .withColumnRenamed(column, self._rename_col(column, "b"))
+            .withColumn(
+                self.__add_index_name,
+                row_number().over(Window().orderBy(self.__ord_col).partitionBy(F.lit(EMPTY_VALUE_PARTITION))),
+            )
+            .withColumnRenamed(column, col_b)
         )
 
         n_a_obs: int = group_a.count()
@@ -230,11 +243,25 @@ class TtestRelativeCriterionSpark(ABSparkCriterion):
         if n_a_obs != n_b_obs:
             raise ValueError("Size of group A and B must be equal")
 
-        both = a_.join(b_, self.__add_index_name, "inner").withColumn(
-            self.__diff, col(self._rename_col(column, "b")) - col(self._rename_col(column, "a"))
-        )
+        both: DataFrame = a_.join(b_, self.__add_index_name, "inner").withColumn(self.__diff, col(col_b) - col(col_a))
+
+        cov: float = both.stat.cov(col_a, col_b)
+        stats = both.select(
+            variance(col_a).alias("__var_a"),
+            variance(col_b).alias("__var_b"),
+            mean(col_a).alias("__mean_a"),
+            mean(col_b).alias("__mean_b"),
+        ).first()
+        var_a: float = theory_pkg.unbiased_to_sufficient(stats["__var_a"], n_a_obs, is_std=False)
+        var_b: float = theory_pkg.unbiased_to_sufficient(stats["__var_b"], n_a_obs, is_std=False)
+
         self.data_stats["mean"], self.data_stats["std"] = get_stats_from_table(both, self.__diff)
         self.data_stats["n_obs"] = n_a_obs
+        self.data_stats["cov"] = cov
+        self.data_stats["var_a"] = var_a
+        self.data_stats["var_b"] = var_b
+        self.data_stats["mean_a"] = stats["__mean_a"]
+        self.data_stats["mean_b"] = stats["__mean_b"]
         self.parameters_are_cached = True
 
     def calculate_pvalue(
@@ -247,11 +274,26 @@ class TtestRelativeCriterionSpark(ABSparkCriterion):
     ):
         self._recalc_cache(group_a, group_b, column)
         if effect_type == Effects.abs.value:
+            if "alternative" in kwargs:
+                kwargs["alternative"] = theory_pkg.switch_alternative(kwargs["alternative"])
             p_value = theory_pkg.ttest_1samp_from_stats(
                 mean=self.data_stats["mean"], std=self.data_stats["std"], n_obs=self.data_stats["n_obs"], **kwargs
-            )
+            )[
+                1
+            ]  # (stat, pvalue)
         elif effect_type == Effects.rel.value:
-            raise NotImplementedError("Will be implemented later")
+            _, p_value = theory_pkg.apply_delta_method_by_stats(
+                size=self.data_stats["n_obs"],
+                mean_group_a=self.data_stats["mean_a"],
+                mean_group_b=self.data_stats["mean_b"],
+                var_group_a=self.data_stats["var_a"],
+                var_group_b=self.data_stats["var_b"],
+                cov_groups=self.data_stats["cov"],
+                transformation="fraction",
+                **kwargs
+            )
+        else:
+            raise ValueError(self._send_type_error_msg())
         self._check_clear_cache()
         return p_value
 
@@ -259,18 +301,49 @@ class TtestRelativeCriterionSpark(ABSparkCriterion):
         self,
         group_a: types.SparkDataFrame,
         group_b: types.SparkDataFrame,
-        alpha: types.StatErrorType,
-        effect_type: str,
+        column: str,
+        alpha: types.StatErrorType = np.array([0.05]),
+        effect_type: str = Effects.abs.value,
         **kwargs,
     ) -> List[Tuple]:
-        raise NotImplementedError("Will be implemented later")
+        self._recalc_cache(group_a, group_b, column)
+        alpha = cast_pkg.transform_alpha_np(alpha)
+        if effect_type == Effects.abs.value:
+            confidence_intervals = self._build_intervals_absolute_from_stats(
+                center=self.data_stats["mean"],
+                sd_1=self.data_stats["std"],
+                n_obs=self.data_stats["n_obs"],
+                alpha=alpha,
+                **kwargs,
+            )
+        elif effect_type == Effects.rel.value:
+            confidence_intervals, _ = theory_pkg.apply_delta_method_by_stats(
+                size=self.data_stats["n_obs"],
+                mean_group_a=self.data_stats["mean_a"],
+                mean_group_b=self.data_stats["mean_b"],
+                var_group_a=self.data_stats["var_a"],
+                var_group_b=self.data_stats["var_b"],
+                cov_groups=self.data_stats["cov"],
+                alpha=alpha,
+                transformation="fraction",
+                **kwargs,
+            )
+        else:
+            raise ValueError(self._send_type_error_msg())
+        return confidence_intervals
 
     def calculate_effect(
-        self, group_a: types.SparkDataFrame, group_b: types.SparkDataFrame, column: str, effect_type: str
+        self,
+        group_a: types.SparkDataFrame,
+        group_b: types.SparkDataFrame,
+        column: str,
+        effect_type: str = Effects.abs.value,
     ) -> float:
         self._recalc_cache(group_a, group_b, column)
         if effect_type == Effects.abs.value:
             effect: float = self.data_stats["mean"]
+        elif effect_type == Effects.rel.value:
+            effect: float = (self.data_stats["mean_b"] - self.data_stats["mean_a"]) / self.data_stats["mean_a"]
         else:
-            raise NotImplementedError("Will be implemented later")
+            raise ValueError(self._send_type_error_msg())
         return effect

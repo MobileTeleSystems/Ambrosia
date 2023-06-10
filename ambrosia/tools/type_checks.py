@@ -16,6 +16,7 @@ import functools
 from typing import Iterable, List
 
 import pandas as pd
+import numpy as np
 
 from ambrosia import types
 
@@ -171,3 +172,11 @@ def check_norm_value(norm: str) -> None:
             raise ValueError(f'Choose correct norm, from {", ".join(norm_list)}')
     else:
         raise TypeError(f'norm variable must be a string and from{", ".join(norm_list)}')
+
+
+def transform_alpha_np(alpha: types.StatErrorType) -> np.ndarray:
+    if isinstance(alpha, float):
+        alpha = [alpha]
+    if isinstance(alpha, Iterable):
+        alpha = np.array(alpha)
+    return alpha

@@ -20,6 +20,7 @@ import scipy.stats as sps
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
+import ambrosia.tools.type_checks as cast_pkg
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, StatCriterion
 
@@ -52,7 +53,7 @@ class TtestIndCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_ind(a=group_b, b=group_a, equal_var=False, **kwargs).pvalue
+            return sps.ttest_ind(a=group_a, b=group_b, equal_var=False, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", **kwargs)
             return pvalue
@@ -89,8 +90,7 @@ class TtestIndCriterion(ABStatCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
-        if isinstance(alpha, float):
-            alpha = np.array([alpha])
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if effect_type == "absolute":
             difference_estimation: float = group_b.mean() - group_a.mean()
             conf_intervals = self._build_intervals_absolute(difference_estimation, group_a, group_b, alpha, **kwargs)
@@ -118,7 +118,30 @@ class TtestIndCriterion(ABStatCriterion):
         return super().get_results(group_a, group_b, alpha, effect_type, **kwargs)
 
 
-class TtestRelCriterion(ABStatCriterion):
+class TtestRelHelpful:
+    def _build_intervals_absolute_from_stats(
+        self,
+        center: float,
+        sd_1: float,
+        n_obs: int,
+        alpha: types.StatErrorType = np.array([0.05]),
+        alternative: str = "two-sided",
+    ):
+        """
+        Helps handle different alternatives and build confidence interval
+        for related sampels
+        """
+        alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, alternative)
+        std_error = sd_1 / np.sqrt(n_obs)
+        quantiles = sps.t.ppf(1 - alpha_corrected / 2, df=n_obs - 1)
+        left_ci: float = center - quantiles * std_error
+        right_ci: float = center + quantiles * std_error
+        left_ci, right_ci = pvalue_pkg.choose_from_bounds(left_ci, right_ci, alternative)
+        conf_intervals = list(zip(left_ci, right_ci))
+        return conf_intervals
+
+
+class TtestRelCriterion(ABStatCriterion, TtestRelHelpful):
     """
     Unit for relative paired T-test.
     """
@@ -127,7 +150,7 @@ class TtestRelCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_rel(a=group_b, b=group_a, **kwargs).pvalue
+            return sps.ttest_rel(a=group_a, b=group_b, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", dependent=True, **kwargs)
             return pvalue
@@ -149,14 +172,10 @@ class TtestRelCriterion(ABStatCriterion):
         Helps handle different alternatives and build confidence interval
         for related sampels
         """
-        alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, alternative)
-        std_error = np.sqrt(np.var(group_b - group_a, ddof=1) / len(group_a))
-        quantiles = sps.t.ppf(1 - alpha_corrected / 2, df=len(group_a) - 1)
-        left_ci: float = center - quantiles * std_error
-        right_ci: float = center + quantiles * std_error
-        left_ci, right_ci = pvalue_pkg.choose_from_bounds(left_ci, right_ci, alternative)
-        conf_intervals = list(zip(left_ci, right_ci))
-        return conf_intervals
+        sd_1: float = np.sqrt(np.var(group_b - group_a, ddof=1))
+        return self._build_intervals_absolute_from_stats(
+            center=center, sd_1=sd_1, n_obs=len(group_a), alpha=alpha, alternative=alternative
+        )
 
     def calculate_conf_interval(
         self,
@@ -166,8 +185,7 @@ class TtestRelCriterion(ABStatCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
-        if isinstance(alpha, float):
-            alpha = np.array([alpha])
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if effect_type == "absolute":
             difference_estimation: float = np.mean(group_b - group_a)
             conf_intervals = self._build_intervals_absolute(difference_estimation, group_a, group_b, alpha, **kwargs)

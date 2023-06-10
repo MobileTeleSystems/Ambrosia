@@ -2,10 +2,13 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+from pyspark.sql.functions import col
+import scipy.stats as sps
 import pytest
 
 from ambrosia.tester import Tester, test
 from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
+from ambrosia.spark_tools.stat_criteria import TtestRelativeCriterionSpark, TtestIndCriterionSpark
 
 
 def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
@@ -212,7 +215,8 @@ def test_criteria_ttest_different(effect_type):
     ) != ttest_rel.calculate_conf_interval(group_a, group_b, effect_type=effect_type)
 
 
-@pytest.mark.parametrize("criterion", ["ttest", "ttest_rel", "mw", "wilcoxon"])
+# Not mw and willcox, because exists x F(x) != G(x) easier than forall x F(x) < G(x)
+@pytest.mark.parametrize("criterion", ["ttest", "ttest_rel"])
 @pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less"), ("ltv", "less")])
 def test_kwargs_passing_theory(criterion, metrics, alternative, tester_on_ltv_retention):
     """
@@ -222,7 +226,7 @@ def test_kwargs_passing_theory(criterion, metrics, alternative, tester_on_ltv_re
     alternative_pvalue = tester_on_ltv_retention.run(
         criterion=criterion, metrics=metrics, as_table=False, alternative=alternative
     )[0]["pvalue"]
-    assert old_pvalue >= alternative_pvalue
+    assert old_pvalue <= alternative_pvalue
 
 
 @pytest.mark.parametrize("metrics, alternative", [("retention", "greater"), ("conversions", "less")])
@@ -244,7 +248,7 @@ def test_kwargs_passing_empiric(metrics, alternative, tester_on_ltv_retention):
         random_seed=random_seed,
         alternative=alternative,
     )[0]["pvalue"]
-    assert old_pvalue >= alternative_pvalue
+    assert old_pvalue <= alternative_pvalue
 
 
 @pytest.mark.parametrize("interval_type", ["yule", "yule_modif", "newcombe", "jeffrey", "agresti"])
@@ -285,10 +289,10 @@ def check_bound_intervals(int_center, int_less, int_gr, left_bound: float = -np.
     """
     Check bound of intervals for different alternatives
     """
-    assert int_less[0] == left_bound
-    assert int_gr[1] == right_bound
-    assert int_gr[0] > int_center[0]
-    assert int_less[1] < int_center[1]
+    assert int_less[1] == right_bound
+    assert int_gr[0] == left_bound
+    assert int_gr[1] < int_center[1]
+    assert int_less[0] > int_center[0]
 
 
 @pytest.mark.parametrize("effect_type", ["absolute"])
@@ -302,8 +306,8 @@ def test_alternative_change_binary(effect_type, interval_type, tester_on_ltv_ret
     )
     # mean retention A - 0.303
     # mean retention B - 0.399
-    assert pvalue_less > pvalue_center
-    assert pvalue_center > pvalue_gr
+    assert pvalue_less < pvalue_center
+    assert pvalue_center < pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr, -1, 1)
 
@@ -323,8 +327,8 @@ def test_alternative_change_th(effect_type, criterion, tester_on_ltv_retention):
         as_table=False,
     )
     # Mean(group_a) > Mean(group_b) in this table
-    assert pvalue_less < pvalue_center
-    assert pvalue_center < pvalue_gr
+    assert pvalue_less > pvalue_center
+    assert pvalue_center > pvalue_gr
     # Check intervals
     check_bound_intervals(int_center, int_less, int_gr)
 
@@ -347,7 +351,7 @@ def test_spark_tester(tester_spark_ltv_ret, tester_on_ltv_retention, alternative
 
 
 @pytest.mark.parametrize("effect_type", ["absolute", "relative"])
-@pytest.mark.parametrize("alternative", ["two-sided", "greater"])
+@pytest.mark.parametrize("alternative", ["two-sided", "less"])
 def test_paired_bootstrap(effect_type, alternative):
     """
     Compare pvalues and confidence intervals between paired and regular bootstrap
@@ -384,3 +388,70 @@ def test_paired_bootstrap(effect_type, alternative):
     )
     assert test_results_dep[0]["pvalue"] < test_results_ind[0]["pvalue"]
     assert test_results_dep[0]["confidence_interval"][0] > test_results_ind[0]["confidence_interval"][0]
+
+
+def _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps_method):
+    pvalue_sp = spark_criterion.calculate_pvalue(a_sp, b_sp, column="ltv",
+                                                               effect_type=effect_type, alternative=alternative)
+    pvalue_pd = pandas_criterion.calculate_pvalue(a_gr, b_gr, effect_type=effect_type, alternative=alternative)
+
+    assert check_eq(pvalue_sp, pvalue_pd)
+
+    pvalue_sps = sps_method(a_gr, b_gr, alternative=alternative).pvalue
+
+    if effect_type == "absolute":
+        assert check_eq(pvalue_sp, pvalue_sps)
+
+    # pvalue consistency
+    assert (pvalue_sps - 0.5) * (pvalue_sp - 0.5) >=0
+
+    effect_sp = spark_criterion.calculate_effect(a_sp, b_sp, column="ltv", effect_type=effect_type)
+    effect_pd = pandas_criterion.calculate_effect(a_gr, b_gr, effect_type=effect_type)
+    assert check_eq(effect_sp, effect_pd)
+
+    conf_sp = spark_criterion.calculate_conf_interval(
+        a_sp, b_sp, column="ltv", alpha=0.05, effect_type=effect_type, alternative=alternative
+    )
+    conf_pd = pandas_criterion.calculate_conf_interval(
+        a_gr, b_gr, alpha=0.05, effect_type=effect_type, alternative=alternative
+    )
+    
+    assert check_eq_int(conf_sp[0], conf_pd[0])
+
+
+def _get_groups(spark_data, pandas_data):
+    a_sp = spark_data.where(col("group") == 'A')
+    b_sp = spark_data.where(col("group") == 'B')
+    a_gr = pandas_data[pandas_data.group == 'A'].ltv.values
+    b_gr = pandas_data[pandas_data.group == 'B'].ltv.values
+    return a_sp, b_sp, a_gr, b_gr
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater", "less"])
+def test_ttest_ind_spark(results_ltv_retention_conversions,
+                         results_ltv_retention_conversions_spark,
+                         effect_type, alternative):
+    a_sp, b_sp, a_gr, b_gr = _get_groups(
+        results_ltv_retention_conversions_spark, results_ltv_retention_conversions
+    )
+
+    spark_criterion = TtestIndCriterionSpark(cache_parameters=True)
+    pandas_criterion = TtestIndCriterion()
+
+    _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps.ttest_ind)
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater", "less"])
+def test_ttest_rel_spark(results_ltv_retention_conversions,
+                         results_ltv_retention_conversions_spark,
+                         effect_type, alternative):
+    a_sp, b_sp, a_gr, b_gr = _get_groups(
+        results_ltv_retention_conversions_spark, results_ltv_retention_conversions
+    )
+
+    spark_criterion = TtestRelativeCriterionSpark(cache_parameters=True)
+    pandas_criterion = TtestRelCriterion()
+
+    _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps.ttest_rel)

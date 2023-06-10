@@ -16,6 +16,7 @@ from typing import Iterable, List, Optional
 
 import ambrosia.spark_tools.stratification as strat_pkg
 from ambrosia import types
+from ambrosia.spark_tools.constants import EMPTY_VALUE_PARTITION
 from ambrosia.tools import split_tools
 from ambrosia.tools.import_tools import spark_installed
 
@@ -26,7 +27,6 @@ if spark_installed():
 HASH_COLUMN_NAME: str = "__hashed_ambrosia_column"
 GROUPS_COLUMN: str = "group"
 ROW_NUMBER: str = "__row_number"
-EMPTY_VALUE: int = 0
 
 
 def unite_spark_tables(*dataframes: types.SparkDataFrame) -> types.SparkDataFrame:
@@ -90,7 +90,7 @@ def get_hash_split(
         label_ind = (row_number - 1) // groups_size
         return labels[label_ind]
 
-    window = Window.orderBy(HASH_COLUMN_NAME).partitionBy(spark_funcs.lit(EMPTY_VALUE))
+    window = Window.orderBy(HASH_COLUMN_NAME).partitionBy(spark_funcs.lit(EMPTY_VALUE_PARTITION))
     result = hashed_dataframe.withColumn(ROW_NUMBER, spark_funcs.row_number().over(window)).withColumn(
         GROUPS_COLUMN, spark_funcs.udf(udf_make_labels)(spark_funcs.col(ROW_NUMBER))
     )
@@ -128,7 +128,9 @@ def add_to_required_size(
         not_used_ids.withColumn(
             ROW_NUMBER,
             spark_funcs.row_number().over(
-                Window.orderBy(spark_funcs.lit(EMPTY_VALUE)).partitionBy(spark_funcs.lit(EMPTY_VALUE))
+                Window.orderBy(spark_funcs.lit(EMPTY_VALUE_PARTITION)).partitionBy(
+                    spark_funcs.lit(EMPTY_VALUE_PARTITION)
+                )
             ),
         )
         .withColumn(GROUPS_COLUMN, spark_funcs.udf(udf_make_labels_with_find)(ROW_NUMBER))

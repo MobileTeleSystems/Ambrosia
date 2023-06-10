@@ -34,6 +34,15 @@ ROUND_DIGITS_TABLE: int = 3
 ROUND_DIGITS_PERCENT: int = 1
 
 
+def switch_alternative(alternative: str) -> str:
+    Alternatives.raise_if_value_incorrect_enum(alternative)
+    if alternative == Alternatives.ts.value:
+        return alternative
+    if alternative == Alternatives.less.value:
+        return Alternatives.gr.value
+    return Alternatives.less.value
+
+
 def get_stats(values: Iterable[float], ddof: int = 1) -> Tuple[float, float]:
     """
     Calculate the mean and standard value for a list of values.
@@ -60,12 +69,13 @@ def check_encode_alternative(alternative: str) -> str:
         return statsmodels_alternatives_encoding[alternative]
 
 
-def unbiased_to_sufficient(std: float, size: int) -> float:
+def unbiased_to_sufficient(std: float, size: int, is_std: bool = True) -> float:
     """
     Transforms unbiased estimation of standard deviation to sufficient
     (ddof = 1) => (ddof = 0)
+    If is_std = True, then transform std, else variance
     """
-    return std * np.sqrt((size - 1) / size)
+    return std * np.sqrt((size - 1) / size) if is_std else std * (size - 1) / size
 
 
 def check_target_type(
