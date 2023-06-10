@@ -2,10 +2,13 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+from pyspark.sql.functions import col
+import scipy.stats as sps
 import pytest
 
 from ambrosia.tester import Tester, test
 from ambrosia.tools.stat_criteria import TtestIndCriterion, TtestRelCriterion
+from ambrosia.spark_tools.stat_criteria import TtestRelativeCriterionSpark, TtestIndCriterionSpark
 
 
 def check_eq(a: float, b: float, eps: float = 1e-5) -> bool:
@@ -384,3 +387,70 @@ def test_paired_bootstrap(effect_type, alternative):
     )
     assert test_results_dep[0]["pvalue"] < test_results_ind[0]["pvalue"]
     assert test_results_dep[0]["confidence_interval"][0] > test_results_ind[0]["confidence_interval"][0]
+
+
+def _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps_method):
+    pvalue_sp = spark_criterion.calculate_pvalue(a_sp, b_sp, column="ltv",
+                                                               effect_type=effect_type, alternative=alternative)
+    pvalue_pd = pandas_criterion.calculate_pvalue(a_gr, b_gr, effect_type=effect_type, alternative=alternative)
+
+    assert check_eq(pvalue_sp, pvalue_pd)
+
+    pvalue_sps = sps_method(a_gr, b_gr, alternative=alternative).pvalue
+
+    if effect_type == "absolute":
+        assert check_eq(pvalue_sp, pvalue_sps)
+
+    # pvalue consistency
+    assert (pvalue_sps - 0.5) * (pvalue_sp - 0.5) >=0
+
+    effect_sp = spark_criterion.calculate_effect(a_sp, b_sp, column="ltv", effect_type=effect_type)
+    effect_pd = pandas_criterion.calculate_effect(a_gr, b_gr, effect_type=effect_type)
+    assert check_eq(effect_sp, effect_pd)
+
+    conf_sp = spark_criterion.calculate_conf_interval(
+        a_sp, b_sp, column="ltv", alpha=0.05, effect_type=effect_type, alternative=alternative
+    )
+    conf_pd = pandas_criterion.calculate_conf_interval(
+        a_gr, b_gr, alpha=0.05, effect_type=effect_type, alternative=alternative
+    )
+    
+    assert check_eq_int(conf_sp[0], conf_pd[0])
+
+
+def _get_groups(spark_data, pandas_data):
+    a_sp = spark_data.where(col("group") == 'A')
+    b_sp = spark_data.where(col("group") == 'B')
+    a_gr = pandas_data[pandas_data.group == 'A'].ltv.values
+    b_gr = pandas_data[pandas_data.group == 'B'].ltv.values
+    return a_sp, b_sp, a_gr, b_gr
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater", "less"])
+def test_ttest_ind_spark(results_ltv_retention_conversions,
+                         results_ltv_retention_conversions_spark,
+                         effect_type, alternative):
+    a_sp, b_sp, a_gr, b_gr = _get_groups(
+        results_ltv_retention_conversions_spark, results_ltv_retention_conversions
+    )
+
+    spark_criterion = TtestIndCriterionSpark(cache_parameters=True)
+    pandas_criterion = TtestIndCriterion()
+
+    _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps.ttest_ind)
+
+
+@pytest.mark.parametrize("effect_type", ["absolute", "relative"])
+@pytest.mark.parametrize("alternative", ["two-sided", "greater", "less"])
+def test_ttest_rel_spark(results_ltv_retention_conversions,
+                         results_ltv_retention_conversions_spark,
+                         effect_type, alternative):
+    a_sp, b_sp, a_gr, b_gr = _get_groups(
+        results_ltv_retention_conversions_spark, results_ltv_retention_conversions
+    )
+
+    spark_criterion = TtestRelativeCriterionSpark(cache_parameters=True)
+    pandas_criterion = TtestRelCriterion()
+
+    _test_criteria(spark_criterion, pandas_criterion, a_sp, b_sp, a_gr, b_gr, effect_type, alternative, sps.ttest_rel)
