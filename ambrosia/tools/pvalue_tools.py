@@ -114,9 +114,9 @@ def calculate_pvalue_by_delta_method(
         raise ValueError(f"Got unknown random variable transformation: {ADMISSIBLE_TRANSFORMATIONS}")
 
     if alternative == "less":
-        pvalue: float = sps.norm.cdf(statistic)
-    elif alternative == "greater":
         pvalue: float = sps.norm.sf(statistic)
+    elif alternative == "greater":
+        pvalue: float = sps.norm.cdf(statistic)
     elif alternative == "two-sided":
         pvalue: float = 2 * min(sps.norm.cdf(statistic), sps.norm.sf(statistic))
     else:

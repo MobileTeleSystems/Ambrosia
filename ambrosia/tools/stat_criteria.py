@@ -20,6 +20,7 @@ import scipy.stats as sps
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
+import ambrosia.tools.type_checks as cast_pkg
 from ambrosia import types
 from ambrosia.tools.ab_abstract_component import ABStatCriterion, StatCriterion
 
@@ -52,7 +53,7 @@ class TtestIndCriterion(ABStatCriterion):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_ind(a=group_b, b=group_a, equal_var=False, **kwargs).pvalue
+            return sps.ttest_ind(a=group_a, b=group_b, equal_var=False, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", **kwargs)
             return pvalue
@@ -89,8 +90,7 @@ class TtestIndCriterion(ABStatCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
-        if isinstance(alpha, float):
-            alpha = np.array([alpha])
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if effect_type == "absolute":
             difference_estimation: float = group_b.mean() - group_a.mean()
             conf_intervals = self._build_intervals_absolute(difference_estimation, group_a, group_b, alpha, **kwargs)
@@ -150,7 +150,7 @@ class TtestRelCriterion(ABStatCriterion, TtestRelHelpful):
 
     def calculate_pvalue(self, group_a: np.ndarray, group_b: np.ndarray, effect_type: str = "absolute", **kwargs):
         if effect_type == "absolute":
-            return sps.ttest_rel(a=group_b, b=group_a, **kwargs).pvalue
+            return sps.ttest_rel(a=group_a, b=group_b, **kwargs).pvalue
         elif effect_type == "relative":
             _, pvalue = theory_pkg.apply_delta_method(group_a, group_b, "fraction", dependent=True, **kwargs)
             return pvalue
@@ -185,8 +185,7 @@ class TtestRelCriterion(ABStatCriterion, TtestRelHelpful):
         effect_type: str = "absolute",
         **kwargs,
     ):
-        if isinstance(alpha, float):
-            alpha = np.array([alpha])
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if effect_type == "absolute":
             difference_estimation: float = np.mean(group_b - group_a)
             conf_intervals = self._build_intervals_absolute(difference_estimation, group_a, group_b, alpha, **kwargs)

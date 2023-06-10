@@ -19,6 +19,7 @@ import scipy.stats as sps
 
 import ambrosia.tools.pvalue_tools as pvalue_pkg
 import ambrosia.tools.theoretical_tools as theory_pkg
+import ambrosia.tools.type_checks as cast_pkg
 from ambrosia import types
 from ambrosia.spark_tools.constants import EMPTY_VALUE_PARTITION
 from ambrosia.spark_tools.theory import get_stats_from_table
@@ -135,12 +136,12 @@ class TtestIndCriterionSpark(ABSparkCriterion):
             self.__calc_and_cache_data_parameters(group_a, group_b, column)
         if effect_type == "absolute":
             p_value = sps.ttest_ind_from_stats(
-                self.data_stats["mean_group_b"],
-                self.data_stats["std_group_b"],
-                self.data_stats["nobs_group_b"],
                 self.data_stats["mean_group_a"],
                 self.data_stats["std_group_a"],
                 self.data_stats["nobs_group_a"],
+                self.data_stats["mean_group_b"],
+                self.data_stats["std_group_b"],
+                self.data_stats["nobs_group_b"],
                 **kwargs,
             ).pvalue
         elif effect_type == "relative":
@@ -177,10 +178,12 @@ class TtestIndCriterionSpark(ABSparkCriterion):
         effect_type: str = "absolute",
         **kwargs,
     ):
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if self.parameters_are_cached is not True:
             self.__calc_and_cache_data_parameters(group_a, group_b, column)
         if effect_type == "absolute":
-            alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, kwargs["alternative"])
+            alternative = "two-sided" if"alternative" not in kwargs else kwargs["alternative"]
+            alpha_corrected: float = pvalue_pkg.corrected_alpha(alpha, alternative)
             quantiles, sd = theory_pkg.get_ttest_info_from_stats(
                 var_a=self.data_stats["std_group_a"] ** 2,
                 var_b=self.data_stats["std_group_b"] ** 2,
@@ -191,7 +194,7 @@ class TtestIndCriterionSpark(ABSparkCriterion):
             mean = self.data_stats["mean_group_b"] - self.data_stats["mean_group_a"]
             left_ci: np.ndarray = mean - quantiles * sd
             right_ci: np.ndarray = mean + quantiles * sd
-            return self._make_ci(left_ci, right_ci, kwargs["alternative"])
+            return self._make_ci(left_ci, right_ci, alternative)
         elif effect_type == "relative":
             conf_interval = self._apply_delta_method(alpha, **kwargs)[0]
             return conf_interval
@@ -287,6 +290,7 @@ class TtestRelativeCriterionSpark(ABSparkCriterion, TtestRelHelpful):
                 var_group_b=self.data_stats["var_b"],
                 cov_groups=self.data_stats["cov"],
                 transformation="fraction",
+                **kwargs
             )
         else:
             raise ValueError(self._send_type_error_msg())
@@ -298,11 +302,12 @@ class TtestRelativeCriterionSpark(ABSparkCriterion, TtestRelHelpful):
         group_a: types.SparkDataFrame,
         group_b: types.SparkDataFrame,
         column: str,
-        alpha: types.StatErrorType,
+        alpha: types.StatErrorType = np.array([0.05]),
         effect_type: str = Effects.abs.value,
         **kwargs,
     ) -> List[Tuple]:
         self._recalc_cache(group_a, group_b, column)
+        alpha = cast_pkg.transform_alpha_np(alpha)
         if effect_type == Effects.abs.value:
             confidence_intervals = self._build_intervals_absolute_from_stats(
                 center=self.data_stats["mean"],
@@ -315,7 +320,7 @@ class TtestRelativeCriterionSpark(ABSparkCriterion, TtestRelHelpful):
             confidence_intervals, _ = theory_pkg.apply_delta_method_by_stats(
                 size=self.data_stats["n_obs"],
                 mean_group_a=self.data_stats["mean_a"],
-                mean_group_b=self.data_stats["mean_group_b"],
+                mean_group_b=self.data_stats["mean_b"],
                 var_group_a=self.data_stats["var_a"],
                 var_group_b=self.data_stats["var_b"],
                 cov_groups=self.data_stats["cov"],
