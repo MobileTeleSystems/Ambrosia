@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from pytest_lazy_fixtures import lf
 
 from ambrosia.tools.ab_abstract_component import EmptyStratValue
 from ambrosia.tools.stratification import Stratification
@@ -43,8 +44,8 @@ def test_strat_sizes(stratificator):
 @pytest.mark.parametrize(
     "ids, column, answer",
     [
-        (np.arange(0, 1000, 43), None, pytest.lazy_fixture("answer_ids_strat")),
-        (pytest.lazy_fixture("id_for_b_strat"), "id", pytest.lazy_fixture("answer_ids_strat_column")),
+        (np.arange(0, 1000, 43), None, lf("answer_ids_strat")),
+        (lf("id_for_b_strat"), "id", lf("answer_ids_strat_column")),
     ],
 )
 def test_test_ids(ids, column, answer, stratificator):

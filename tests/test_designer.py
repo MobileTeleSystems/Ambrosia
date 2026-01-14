@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import yaml
+from pytest_lazy_fixtures import lf
 
 from ambrosia.designer import Designer, design, design_binary, load_from_config
 
@@ -53,12 +54,12 @@ def test_corret_type(designer_simple_table, designer_ltv):
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_simple_table"), 603),
-        ("effect", pytest.lazy_fixture("designer_simple_table"), "49.2%"),
-        ("power", pytest.lazy_fixture("designer_simple_table"), "20.7%"),
-        ("size", pytest.lazy_fixture("designer_ltv"), 1553),
-        ("effect", pytest.lazy_fixture("designer_ltv"), "17.6%"),
-        ("power", pytest.lazy_fixture("designer_ltv"), "35.6%"),
+        ("size", lf("designer_simple_table"), 603),
+        ("effect", lf("designer_simple_table"), "49.2%"),
+        ("power", lf("designer_simple_table"), "20.7%"),
+        ("size", lf("designer_ltv"), 1553),
+        ("effect", lf("designer_ltv"), "17.6%"),
+        ("power", lf("designer_ltv"), "35.6%"),
     ],
 )
 def test_run_theory(param_to_design, expected_value, designer):
@@ -167,9 +168,9 @@ def test_design_binary_function(to_design, effects, sizes, beta, method, groups_
 @pytest.mark.parametrize(
     "param_to_design, designer, expected_value",
     [
-        ("size", pytest.lazy_fixture("designer_ltv_spark"), 1553),
-        ("effect", pytest.lazy_fixture("designer_ltv_spark"), "17.6%"),
-        ("power", pytest.lazy_fixture("designer_ltv_spark"), "35.6%"),
+        ("size", lf("designer_ltv_spark"), 1553),
+        ("effect", lf("designer_ltv_spark"), "17.6%"),
+        ("power", lf("designer_ltv_spark"), "35.6%"),
     ],
 )
 def test_run_theory_spark(param_to_design, expected_value, designer):
@@ -186,9 +187,9 @@ def test_run_theory_spark(param_to_design, expected_value, designer):
 @pytest.mark.parametrize(
     "param_to_design, designer",
     [
-        ("size", pytest.lazy_fixture("designer_ltv_spark")),
-        ("effect", pytest.lazy_fixture("designer_ltv_spark")),
-        ("power", pytest.lazy_fixture("designer_ltv_spark")),
+        ("size", lf("designer_ltv_spark")),
+        ("effect", lf("designer_ltv_spark")),
+        ("power", lf("designer_ltv_spark")),
     ],
 )
 def test_empiric_spark(param_to_design, designer):
