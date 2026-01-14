@@ -56,11 +56,7 @@ def calc_statistic_for_delta_method(
     """
     return np.sqrt(
         np.abs(
-            (
-                var_group_b / (mean_a**2)
-                - 2 * covariance_ab * mean_b / mean_a**3
-                + var_group_a * (mean_b**2) / mean_a**4
-            )
+            (var_group_b / (mean_a**2) - 2 * covariance_ab * mean_b / mean_a**3 + var_group_a * (mean_b**2) / mean_a**4)
             / size
         )
     )

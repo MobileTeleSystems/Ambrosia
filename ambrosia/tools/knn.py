@@ -54,8 +54,7 @@ class NMTree:
         if self.__use_hnswlib:
             if hnswlib is None:
                 raise ImportError(
-                    "nmslib failed and hnswlib is not installed. "
-                    "Please install hnswlib: pip install hnswlib"
+                    "nmslib failed and hnswlib is not installed. " "Please install hnswlib: pip install hnswlib"
                 )
             dim = points.shape[1]
             self.__index = hnswlib.Index(space="l2", dim=dim)
