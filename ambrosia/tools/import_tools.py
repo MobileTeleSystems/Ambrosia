@@ -18,8 +18,7 @@
 
 
 import typing as tp
-
-import pkg_resources
+from importlib.metadata import distributions
 
 
 class NotInstalledPackage(Exception):
@@ -41,7 +40,7 @@ class PysparkNotInstalled(NotInstalledPackage, default_message="Install pyspark 
 
 
 def get_installed_package_names() -> tp.List[str]:
-    return [package.key for package in pkg_resources.working_set]
+    return [dist.metadata["Name"].lower() for dist in distributions()]
 
 
 def check_package(package_name: str) -> bool:

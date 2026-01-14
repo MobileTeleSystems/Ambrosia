@@ -1,6 +1,50 @@
 Release Notes
 =============
 
+Version 0.5.0 (06.01.2025)
+---------------------------
+
+**Breaking Changes:**
+
+* Minimum Python version raised to 3.9 (dropped support for 3.7, 3.8)
+
+* Minimum PySpark version raised to 3.4 (dropped support for 3.2, 3.3)
+
+**New Features:**
+
+* Added support for Python 3.11, 3.12, 3.13
+
+**Bug Fixes:**
+
+* Added hnswlib as fallback for nmslib on macOS ARM (fixes segfault in metric split)
+
+**Dependencies:**
+
+* Updated numpy to >=1.24.0, <3.0.0
+
+* Updated pandas to >=1.5.0, <3.0.0
+
+* Updated scipy to >=1.10.0
+
+* Updated scikit-learn to >=1.3.0
+
+* Updated nmslib to >=2.1.0
+
+* Added hnswlib >=0.7.0 as alternative KNN backend
+
+* Updated catboost to >=1.2.0
+
+* Updated other dependencies for Python 3.12/3.13 compatibility
+
+**Internal:**
+
+* Replaced deprecated ``pkg_resources`` with ``importlib.metadata``
+
+* Updated CI/CD to test Python 3.9-3.13
+
+* Updated GitHub Actions to v4/v5
+
+
 Version 0.4.1 (21.04.2023)
 ---------------------------
 

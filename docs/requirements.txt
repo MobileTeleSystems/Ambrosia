@@ -1,6 +1,6 @@
 sphinx
 sphinx_copybutton
-sphinx_gallery==0.10.0
+sphinx_gallery>=0.14.0
 nbsphinx
 nbsphinx_link
 numpydoc
