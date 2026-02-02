@@ -5,6 +5,13 @@
 import os
 import sys
 
+# Mock heavy C++ dependencies for ReadTheDocs
+autodoc_mock_imports = [
+    "nmslib",
+    "hnswlib",
+    "catboost",
+    "pyspark",
+]
 
 # Configuration file for the Sphinx documentation builder.
 #
