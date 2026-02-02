@@ -6,8 +6,8 @@ build:
     python: "3.11"
   jobs:
     post_install:
-      - pip install --no-cache-dir poetry
-      - poetry export -f requirements.txt -o requirements.txt --without-hashes
+      - pip install --no-cache-dir poetry poetry-plugin-export
+      - poetry export -f requirements.txt -o requirements.txt --without-hashes --without dev
       - pip install --no-cache-dir -r requirements.txt
 
 sphinx:
