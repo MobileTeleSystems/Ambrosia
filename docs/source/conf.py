@@ -61,7 +61,6 @@ extensions = [
     "numpydoc",
     "nbsphinx",
     "nbsphinx_link",
-    # "sphinx_gallery.load_style",  # Disabled: incompatible with Python 3.10+
     "sphinx_copybutton",
     "sphinx.ext.autosectionlabel",
 ]

@@ -1,8 +1,8 @@
 Pandas Data Examples
 --------------------
 
-.. nblinkgallery::
-    :name: pandas-examples
+.. toctree::
+    :maxdepth: 1
 
     /pandas_examples/00_preprocessing
     /pandas_examples/01_vr_transformations

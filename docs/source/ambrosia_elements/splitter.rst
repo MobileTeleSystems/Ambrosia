@@ -29,8 +29,8 @@ experimental groups using different approaches.
 Examples of using groups splitting tools
 ----------------------------------------
 
-.. nblinkgallery::
-    :name: splitter-examples
+.. toctree::
+    :maxdepth: 1
 
     /pandas_examples/05_pandas_splitter
     /spark_examples/08_spark_splitter

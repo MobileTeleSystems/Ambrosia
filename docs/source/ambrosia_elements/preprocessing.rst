@@ -25,10 +25,10 @@ Data preprocessing tools:
 Examples of using data transformation tools
 -------------------------------------------
 
-.. nblinkgallery::
-    :name: preprocessing-examples
+.. toctree::
+    :maxdepth: 1
 
-   /pandas_examples/00_preprocessing
-   /pandas_examples/01_vr_transformations
-   /pandas_examples/02_preprocessor
-   /pandas_examples/11_cuped_example
+    /pandas_examples/00_preprocessing
+    /pandas_examples/01_vr_transformations
+    /pandas_examples/02_preprocessor
+    /pandas_examples/11_cuped_example

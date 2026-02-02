@@ -29,8 +29,8 @@ and calculating the experimental uplift value with corresponding confidence inte
 Examples of using testing tools
 -------------------------------
 
-.. nblinkgallery::
-    :name: tester-examples
+.. toctree::
+    :maxdepth: 1
 
     /pandas_examples/06_pandas_tester
     /spark_examples/09_spark_tester

@@ -32,9 +32,9 @@ groups size, and experiment statistical power, based on historical metrics value
 Examples of using experiment design tools
 -----------------------------------------
 
-.. nblinkgallery::
-    :name: designer-examples
+.. toctree::
+    :maxdepth: 1
 
-   /pandas_examples/03_pandas_designer
-   /pandas_examples/04_binary_design
-   /spark_examples/07_spark_designer
+    /pandas_examples/03_pandas_designer
+    /pandas_examples/04_binary_design
+    /spark_examples/07_spark_designer
