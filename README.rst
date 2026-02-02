@@ -62,6 +62,8 @@ and `Tutorials <https://github.com/MobileTeleSystems/Ambrosia/tree/main/examples
 Installation
 ------------
 
+**Requirements:** Python 3.9+
+
 You can always get the newest *Ambrosia* release using ``pip``.
 Stable version is released on every tag to ``main`` branch. 
 
