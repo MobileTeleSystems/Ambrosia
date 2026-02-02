@@ -1,6 +1,6 @@
-sphinx
+sphinx>=7.0,<9.0
 sphinx_copybutton
 nbsphinx
 nbsphinx_link
-numpydoc<1.9.0
+numpydoc>=1.6.0,<1.9.0
 furo
